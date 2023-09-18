@@ -32,12 +32,6 @@ def create_task(conn, task):
     :param task:
     :return:
     """
-    delete_records = "DELETE FROM tasks"
-
-    cur=conn.cursor()
-    cur.execute(delete_records)
-
-    print("Deleted records")
     conn.commit()
     sql = ''' INSERT OR REPLACE INTO tasks(Doc_ID,Title,Doc_Text,Doc_Blockquotes,Doc_Size)
               VALUES(?,?,?,?,?) '''     #this query is injected to to sql to create a row with headers(doc-id,title,doc_text,docsize) to the table Task
@@ -132,6 +126,15 @@ def retrieve_text(conn, query):
       
     return data_dict
 
+def delete_sql_records(conn):
+    delete_records = "DELETE FROM tasks"
+
+    cur=conn.cursor()
+    cur.execute(delete_records)
+
+    print("Deleted records")
+    
+
 
 def find_matching_text_with_query(column_value, query):
     matches = re.finditer(regex_pattern, column_value, re.MULTILINE | re.DOTALL)
@@ -159,9 +162,13 @@ def main(lst, query): #lst, query to be added as parameters
     conn = create_connection(database)
     with conn:
         # create tasks from a list
+
+        delete_sql_records(conn)
         
         for task in lst:
             create_task(conn, task)
+
+        
         
         data_dict=retrieve_text(conn, query)
 
