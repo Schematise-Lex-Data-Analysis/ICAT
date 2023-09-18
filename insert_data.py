@@ -141,7 +141,7 @@ def find_matching_text(column_value):
     return matching_text
 
 def main(lst, query): #lst, query to be added as parameters
-    database = "pythonsqlite.db"
+    database = "/var/data/pythonsqlite.db"
     
     #query = "arbitration"
     
