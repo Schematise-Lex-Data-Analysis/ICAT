@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Make A Short URL</title>
+    <link href='https://fonts.googleapis.com/css?family=Nunito:400,300' rel='stylesheet' type='text/css'>
+
+    <style>
+        *, *:before, *:after {
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Nunito', sans-serif;
+    color: #384047;
+  }
+  input[type="text"],
+  select {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    font-size: 16px;
+    height: auto;
+    margin: 0;
+    outline: 0;
+    padding: 15px;
+    width: 100%;
+    background-color: #e8eeef;
+    color: #8a97a0;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.03) inset;
+    margin-bottom: 30px;
+  }
+  form {
+    max-width: 500px;
+    margin: 10px auto;
+    padding: 10px 20px;
+    background: #f4f7f8;
+    border-radius: 8px;
+  }
+  h1 {
+    margin: 0 0 30px 0;
+    text-align: center;
+  }
+  #btn {
+    padding: 19px 39px 18px 39px;
+    color: #FFF;
+    background-color: #4bc970;
+    font-size: 18px;
+    text-align: center;
+    font-style: normal;
+    border-radius: 5px;
+    width: 100%;
+    border: 1px solid #3ac162;
+    border-width: 1px 1px 3px;
+    box-shadow: 0 -1px 0 rgba(255,255,255,0.1) inset;
+    margin-bottom: 10px;
+  }
+  label {
+    display: block;
+    margin-bottom: 8px;
+  }
+    </style>
+</head>
+<body>
+<h1>Results</h1>
+<table>
+<tr>
+<td> Document Title </td>
+<td> Matching extract </td>
+</tr>
+{% for result in range(ln_lst) %}
+<tr>
+<td>
+<a href = "https://indiankanoon.org/doc/{{ results['DocID'][result] }}"> {{ results['Title'][result] }} </a>
+</td>
+<td>
+<ul>
+{% for column_list in results['matching_columns'] %}
+<li> 
+    {{ column_list[result] }} <br>
+    <!-- {% for text_value in column_list[result] %}
+        
+    
+    {{ text_value }} <br>
+    {% endfor %} -->
+</li>
+{% endfor %}
+ 
+    {% for indented_text in results['matching_indents'] %}
+    <li>
+        {{ indented_text }} <br>
+    </li>
+{% endfor %}    
+
+</ul>
+ </td>
+</tr>
+{% endfor %}
+</table>
+
+</body>
+</html>
