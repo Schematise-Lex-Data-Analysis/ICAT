@@ -1,7 +1,7 @@
 python-dotenv
 flask
 bs4
-re
-json
 pandas
 ast
+requests
+sqlite3
