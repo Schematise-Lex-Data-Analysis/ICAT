@@ -3,4 +3,4 @@ flask
 bs4
 pandas
 requests
-sqlite3
+
