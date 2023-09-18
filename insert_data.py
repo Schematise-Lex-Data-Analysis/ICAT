@@ -36,12 +36,17 @@ def create_task(conn, task):
 
     cur=conn.cursor()
     cur.execute(delete_records)
+
+    print("Deleted records")
     conn.commit()
     sql = ''' INSERT OR REPLACE INTO tasks(Doc_ID,Title,Doc_Text,Doc_Blockquotes,Doc_Size)
               VALUES(?,?,?,?,?) '''     #this query is injected to to sql to create a row with headers(doc-id,title,doc_text,docsize) to the table Task
     cur = conn.cursor()   #creates a database connection object
     cur.execute(sql, task) #executes the sql query from above which parses 1 row of data(task) to the table Task
     conn.commit() #as the word mean you are committing the above executation(approving/saving)
+
+    print("Created table with values")
+    
     return cur.lastrowid #this for now is negligible to be used for the other task for Indexing
 
 def retrieve_text(conn, query):
@@ -63,6 +68,9 @@ def retrieve_text(conn, query):
 
         # List to store JSON objects of rows with matching columns
     matching_rows_json = []
+
+    print ("Checking for matching rows")
+
     for row in rows:
         has_matching_column = False
         has_matching_text = False
@@ -119,7 +127,9 @@ def retrieve_text(conn, query):
     '''
     with open("Matching_rows_Format.txt", "w") as file:
         file.write(str(data_dict))
-        
+
+    print("Generated matching rows and file with matching rows")
+      
     return data_dict
 
 
