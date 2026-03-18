@@ -143,6 +143,81 @@ def expand_and_classify_with_azure(doc_text: str, snippet: str,
         return {"clause_text": snippet, "is_contract_clause": is_clause}
 
 
+def extract_discussion_with_azure(doc_text: str, contract_clause: str) -> dict:
+    """Extract the most succinct court discussion of a contractual clause from a judgment.
+
+    Sends the full judgment text and the identified contract clause to the LLM,
+    which locates the court's ratio/conclusion discussing that clause and
+    determines sentiment, following annotation guidelines.
+
+    Returns dict with:
+        discussion (str): the most succinct discussion extracted from the judgment
+        sentiment (str): "neutral or positive" or "negative or struck down"
+    """
+    import json as _json
+
+    fallback = {"discussion": "", "sentiment": ""}
+
+    if not doc_text or not contract_clause:
+        return fallback
+
+    client = get_azure_client()
+    response = client.complete(
+        model=os.environ["AZURE_INFERENCE_MODEL"],
+        messages=[
+            SystemMessage(content=(
+                "You are a legal judgment analyst. You will receive the full text of "
+                "an Indian court judgment and a contractual clause that was identified "
+                "within it.\n\n"
+                "Your task is to extract the court's most succinct discussion of that "
+                "contractual clause from the judgment. Follow these guidelines strictly:\n\n"
+                "WHAT TO INCLUDE:\n"
+                "- The ratio decidendi or conclusion where the court discusses the "
+                "contractual clause.\n"
+                "- The most succinct discussion is usually found towards the end of the "
+                "relevant section of the judgment.\n"
+                "- The discussion may span more than one paragraph and may appear in "
+                "different places in the judgment \u2014 include all relevant parts.\n\n"
+                "WHAT TO EXCLUDE:\n"
+                "- Arguments made by the petitioner or appellant.\n"
+                "- The law governing the issue (e.g. Contract Act, Sale of Goods Act, "
+                "Arbitration Act) and specifically any quotations from statutes.\n"
+                "- Lengthy discussions on case law cited by the court (shepherding).\n"
+                "- What lower courts or tribunals discussed \u2014 only include the "
+                "current court's own analysis.\n\n"
+                "SENTIMENT:\n"
+                "- \"neutral or positive\" if the challenge to the clause did not succeed "
+                "(clause upheld, enforced, or not invalidated).\n"
+                "- \"negative or struck down\" if the clause was struck down, declared "
+                "invalid, void, or substantially reinterpreted against the drafter's intent.\n\n"
+                "Respond with JSON only, no markdown fencing:\n"
+                "{\"discussion\": \"the extracted discussion text exactly as it appears "
+                "in the judgment\", \"sentiment\": \"neutral or positive\" or "
+                "\"negative or struck down\"}"
+            )),
+            UserMessage(content=(
+                f"CONTRACT CLAUSE:\n---\n{contract_clause}\n---\n\n"
+                f"FULL JUDGMENT TEXT:\n---\n{doc_text}\n---"
+            )),
+        ],
+        max_tokens=4000,
+        temperature=0,
+    )
+
+    raw = response.choices[0].message.content.strip()
+
+    try:
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        result = _json.loads(raw)
+        return {
+            "discussion": result.get("discussion", ""),
+            "sentiment": result.get("sentiment", ""),
+        }
+    except (_json.JSONDecodeError, KeyError, TypeError):
+        return {"discussion": raw, "sentiment": ""}
+
+
 def pipeline_operations(results):
     """
     Run each result's matching_columns and matching_indents through the

@@ -1,0 +1,161 @@
+ Please refer below mentioned examples of cases with guidelines for your ready reference and understanding
+annotation process and this task will be given to you in a spreadsheet form.
+Clause
+Case name
+Intellectual Property licensing
+CIT Vs MS V.R.V. BREWERIES & BOTTLING INDUSTRIES LTD
+Contract Clause 6. TRADE MARKS AND MARKETING 6.1 The trade marks, brand names, design and the get
+up in which the IMFL products will be sold, supplied and delivered by the UNIT and in
+particular and not limited to those listed in APPENDIX „C‟ hereto shall always be the sole
+property of Shaw Wallace or its associate or related companies as the case may be.  6.2
+The UNIT hereby acknowledges and accepts that the UNIT never had nor has any right,
+title or interest therein and shall not at any time claim any right whatsoever to the use of
+the labels, brand names, trade marks and or get up of the IMFL products belonging to
+Shaw Wallace or to the nominees associates of Shaw Wallace except under written
+permission from Shaw Wallace.  6.3 Shaw Wallace hereby authorizes the UNIT as a
+licensee, under a separate agreement to manufacture, process package and sell the IMFL
+products of various brands of Shaw Wallace as contained in the APPENDIX „C‟ and such
+other brands as may be agreed upon from time to time for which Shaw Wallace or its
+associate or related or nominee company own or will own valid trademark registrations in
+India or otherwise which names, brands, etc. belong to or are associated with Shaw
+Wallace or any such other companies mentioned above.  6.4 Shaw Wallace from time to
+time advise the UNIT as to the marketing arrangement for IMFL of brand names belonging
+to Shaw Wallace or brands designated by the Shaw Wallace and the UNIT shall act in
+accordance with the directions of Shaw Wallace in so far as the sale of above brands of
+IMFL.  6.5 Nothing herein contained or implied shall be construed as precluding in any
+manner Shaw Wallace or its associated companies or related companies as the case may
+be from using or licencing the use of the said trademarks or brand names or get up on any
+goods including IMFL in India of elsewhere.
+Indian Kanoon link https://indiankanoon.org/doc/412799
+Has additional
+clauses?
+YES-
+2. ARRANGING FOR SPIRIT AND UTILISATION THEREOF-PAGE NO. 2
+2.1, .2.2, 2.3, 2.4,
+3. MANUFACTURE/BOTTLING OF IMFL -PAGE NO. 2
+3.1 TO 3.7 -CONTINUING IN PAGE NO. 3.
+4. EXCISE FORMALITIES: -4.1 TO 4.4 PAHE NO. 3.
+7. CONSIDERATION- 7.1 TO 7.3 PAGE NO. 4.
+8. DURATION, TERMINATION AND CONSEQUENCES TEHREOF 8.1 xxxx 8.2 xxxx PAGE NO.
+5.
+11. ASSIGMENT-PAGE NO. 5.
+CONSIDERATION-PAGE NO. 5
+Discussion 22.2 The observation made in paragraph 58 at page 414 of the aforementioned judgment,
+on which reliance has been placed by the learned counsel for revenue seeks only to
+emphasise that the assessee in that case, had only acquired access to technology which
+was not related to any secret process or patent rights and thus in continuum it is
+mentioned that not even a right to use the trademark or brand name had inhered in the
+assessee. From this, it cannot be concluded, as is sought to be done by the learned counsel
+for the revenue that any payment made for use of
+trademark or trade name ipso facto will give colour to the payment as if it is made on
+capital account. This is in our view is a complete mis-reading of the judgment. It is well
+settled that a judgment is an authority for what it decides and not what is Construed as
+logically flowing from it. Judgments cannot be read as statutes. A stray sentence picked out
+of context, cannot be used to turn its ratio around. 22.3 We have already referred to the
+provisions of the agreement. A perusal of the provisions of the agreement would show all
+that the assessee acquired was the use of the brand names and the trade marks of SWCL,
+which find a mention in Appendix-C annexed to the
+said agreement. The assessee acquired no right to any secret process or formulate or even
+any right title and interest in the trade marks and brands under which the IMFL products
+were sold. As a matter of fact assessees rights were co-terminus with the subsistence of
+the said agreement. Therefore, we have no hesitation in rejecting the contention of the
+revenue in this regard. On this issue Ms Rashmi Chopra had referred to the fact that the
+copy of the separate agreement had not been supplied by the assessee and, therefore,
+Tribunal ought to have drawn an adverse inference
+against the assessee. To test the veracity and seriousness of this submission we had called
+upon Ms Rashmi Chopra to show from the record whether such a ground had been taken in
+either their appeal filed before the Tribunal against the order of CIT(A) for assessment year
+1998-99 or in the appeal filed before us. Ms Rashmi Chopra was unable to refer to any
+such ground. It is quite evident that the Revenue took the stand, though erroneously, that
+royalty paid on use of brand names and trade marks would classify the expenditure as one
+made on capital account.
+Sentiment Positive & Neutral
+Clause Termination
+Case name MS REVA ELECTRIC CAR CO.P.LTD. v. MS GREEN MOBIL
+7. Guidelines regarding column on discussion paragraphs.
+• Use the most succinct discussion of the contract Provide the ratio/conclusion in cases where it discusses the
+contract.
+• You can use the Indian Kanoon segmentation feature to see if the ratio/conclusion discusses the contractual clause
+to enhance speed in identifying the paragraph, but this Indian Kanoon feature may not be accurate in all cases.
+• You can also use the section headings in the judgments to identify where the discussion would lie. Additionally, note
+that the most succinct discussion is usually at the end of the section.
+• Do not include what arguments have been made by the petitioner.
+Contract Clause "11. Governing Law and Jurisdiction - 5 -  i. This MOU shall be construed and enforced in
+accordance with the laws of India. ii. In the event of any dispute or difference arising at
+any time between the parties hereto as to the construction, meaning or effect of this
+Agreement or thing contained herein or the rights, duties, liabilities and obligations of the
+parties hereto in relation to this Agreement, the same shall be referred to a single
+arbitrator, in case the parties can agree upon one (1) within a period of thirty days upon
+being called by a party to do so and failing such agreement to three (3) arbitrators one (1)
+each to be appointed by GREENMOBIL and RECC and the third to be appointed by the two
+arbitrators so appointed. The award passed by such arbitrator(s) shall be final and binding
+on both the parties.
+Indian Kanoon link https://indiankanoon.org/doc/233181
+Has additional
+clauses
+Yes- Clause-2 Page No. 5
+Discussion I have noted the guidelines for the exercise of the power, preamble, relevant sections from which the
+reasons should be inferred and recorded, although they need not be communicate. These should be
+recorded in order to ensure effective judicial review in a given case. Termination simpliciter under
+Regulation 9(b) or similar powers can be exercised only in circumstances other than those in regulation9
+(a). The exercise of such powers can only be for purposes germane and relevant to the statute. There
+are several illustrations of that, namely, the employee is incompetent or unsuitable so as to make his
+continuance in the employment detrimental to the interest of the institu- tion, where the continuance of
+the employee is a grave security risk making his continuance detrimental to the interest of the
+Corporation and where because of the conduct of the employee, there is lack of confidence in the
+employee which makes it necessary in the interest of the Corporation to immediately terminate the
+services of the employee. These, however, are illustrative and not exhaustive. There- fore, each case of
+the conferment of the power involved should be decided on the aforesaid basis.  38. At the cost of
+repetition it is to reiterate that when the authority intends to take disciplinary action for imposing penalty
+of dismissal, removal or reduction in rank of an employee, an elaborate procedure has been provided in
+Regulation 15 to conduct an enquiry into misconduct after giving reasonable opportunity. Residuary
+power has been avowedly conferred in Regulation 9(b) with wide discretion on the appropriate authority
+to take actions on similar set of facts but without any guidelines or procedure at the absolute discretion
+of the same authority. The language of Regulation 9(b) is not capable of two interpretations. This power
+appears to be in addition to the normal power in Regulation 15. Thereby the legislative intention is
+manifest that it intended to confer such draconian power couched in language of width which hangs like
+Damocles sword on the neck of the employee, keeping every employee on tenterhook under constant
+pressure of uncertainty,
+precarious tenure at all times right from the date of appointment till date of superannuation. It equally
+enables the employer to pick and choose an employee at whim or vagary to terminate the serv- ice
+arbitrarily and capriciously. 39. Regulation 9(b), thereby deliberately conferred wide power of termination
+of services of the employee without following the principle of audi alteram partem or even modicum of
+procedure of representation before terminating the services of permanent employee. It is well settled rule
+of statutory construction that when two interpretations are possible one which would preserve and save
+constitutionality of a particular Statute, would be preferred to the other that would render it
+unconstitutional and void. When the language is clear, unambiguous and specific and it does not lead to
+the constructions, it is not permissible to read into those provisions something which is not intended. It is
+undoubtedly true as rightly contended by Mr. Ashok Desai, the learned Solicitor General that the power
+to take appropriate and expeditious action to meet the exigencies of weeding out inefficient, corrupt,
+indolent officers or employees from service should be provided and preserved to the competent
+authority. Any action taken without any modicum of reasonable procedure and prior oppor- tunity always
+generates an unquenchable feeling that unfair treatment was meted out to the aggrieved employee. To
+pre- vent miscarriage of justice or to arrest a nursing grievance that arbitrary, whimsical or capricious
+action was taken behind the back of an employee without opportunity, the law must provide a fair, just
+and reasonable procedure as is exigible in a given circumstances as adumbrated in proviso to Art.
+311(2) of the Constitution.
+
+43. In view of the march of law made by Art. 14, in particular after Maneka Gandhi's case, it is too late in
+the day to contend that the competent authority would be vested with wide discretionary
+power without any proper guidelines or the procedure. The further contention that the preamble, the
+other rules and the circumstances could be taken aid of in reading down the provisions of the
+impugned rules or the regulations is also of no assistance when it is found that the legislative intention is
+unmistakably clear, unambiguous and specific. Thus considered, I have no hesitation to conclude that
+the impugned regulation 9(b) of the Regula- tions are arbitrary, unjust, unfair and unreasonable offend-
+ing Arts. 14, 16(1), 19(1)(g) and 21 of the Constitution. It is also opposite to the public policy and thereby
+is void under Section 23 of the Indian Contract Act.
+Sentiment Negative & Struck Down
+• Do not include the law governing the issue (e.g. Contract Act, Sale of Goods Act) and specifically avoid the
+quotations in this regard.
+• Do not include the lengthy discussions on case law (shepharding by the court).
+• Do not include or reiterate what lower courts has discussed.
+• Relevant clause can be more than one paragraph in different places of judgment as well.
+8. Write neutral or positive in all cases where the challenge did not succeed.
+• Write neutral or positive in all cases where the challenge did not succeed.
+• Write negative in all cases where the contractual clause was struck down.
+• This criteria will seek to only identify whether the clause was invalid or not. Hence, in most cases it will be "neutral
+or positive"
+• You can use numbering as either 1 for "neutral or positive" or 2 for "negative or struck down"
+• Criteria for negative includes striking down because of legal invalidity (such as opposed by public policy), but also
+includes any substantial change made to the contract (such as by giving different interpretation than parties
+proposed).
