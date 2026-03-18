@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Resuts page</title>
+    <title>Results page</title>
     <link href='https://fonts.googleapis.com/css?family=Nunito:400,300' rel='stylesheet' type='text/css'>
 <div class="logo-container">
   <img id="desktop-logo" src="../static/images/ikanoon6_powered_transparent.png" alt="Desktop Logo">
-</div>	
-	
+</div>
+
     <style>
         *, *:before, *:after {
     -moz-box-sizing: border-box;
@@ -62,52 +62,66 @@
     display: block;
     margin-bottom: 8px;
   }
+    .clause-box {
+      border-left: 4px solid #4bc970;
+      background: #f9fdf9;
+      padding: 12px 16px;
+      margin: 8px 0;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td {
+      vertical-align: top;
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+    }
     </style>
 </head>
 <body>
 <h1>Results</h1>
 <table>
 <tr>
-<td> Document Title </td>
-<td> Matching extract </td>
+<td><strong>Document Title</strong></td>
+<td><strong>Matching extract</strong></td>
 </tr>
 {% for result in range(ln_lst) %}
 <tr>
 
 <td>
-<a href = "https://indiankanoon.org/doc/{{ results[result]['DocID'] }}"> {{ results[result]['Title'] }} </a>
+<a href="https://indiankanoon.org/doc/{{ results[result]['DocID'] }}">{{ results[result]['Title'] }}</a>
 </td>
 <td>
-<ul>
-{% if results[result]['matching_columns']|length != 0 %}
 
-Matching columns from the regex search for this document is at:
-<li> 
-
-
-{% for text in results[result]['matching_columns'] %}        
-        
-        {{ text }} <br>
- {% endfor %}
-
+{% if results[result].get('expanded_columns_after_classification', [])|length != 0 %}
+<strong>Matching clauses from the regex search for this document:</strong>
+{% for text in results[result]['expanded_columns_after_classification'] %}
+<div class="clause-box">{{ text }}</div>
+{% endfor %}
+{% elif results[result].get('matching_columns_after_classification', [])|length != 0 %}
+<strong>Matching clauses from the regex search for this document:</strong>
+{% for text in results[result]['matching_columns_after_classification'] %}
+<div class="clause-box">{{ text }}</div>
+{% endfor %}
 {% endif %}
 
-</li>
-    <li>
-    
-    {% if results[result]['matching_indents']|length != 0 %}
-    
-    These are the indented clauses which appear in the context of your query for this document:
-			{% for indent in results[result]['matching_indents'] %}        
-        
-        {{ indent }} <br>
-        {% endfor %}
-    {% endif %}
-    </li>
- 
+{% if results[result].get('expanded_indents_after_classification', [])|length != 0 %}
+<strong>Indented clauses appearing in the context of your query for this document:</strong>
+{% for indent in results[result]['expanded_indents_after_classification'] %}
+<div class="clause-box">{{ indent }}</div>
+{% endfor %}
+{% elif results[result].get('matching_indents_after_classification', [])|length != 0 %}
+<strong>Indented clauses appearing in the context of your query for this document:</strong>
+{% for indent in results[result]['matching_indents_after_classification'] %}
+<div class="clause-box">{{ indent }}</div>
+{% endfor %}
+{% endif %}
 
-</ul>
- </td>
+</td>
 </tr>
 {% endfor %}
 </table>

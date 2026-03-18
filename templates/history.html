@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Past Searches</title>
+    <link href='https://fonts.googleapis.com/css?family=Nunito:400,300' rel='stylesheet' type='text/css'>
+<div class="logo-container">
+  <img id="desktop-logo" src="../static/images/ikanoon6_powered_transparent.png" alt="Desktop Logo">
+</div>
+
+    <style>
+        *, *:before, *:after {
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Nunito', sans-serif;
+    color: #384047;
+  }
+  h1 {
+    margin: 0 0 30px 0;
+    text-align: center;
+  }
+  .search-list {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+  .search-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    margin-bottom: 10px;
+    background: #f4f7f8;
+    border-radius: 8px;
+    border-left: 4px solid #4bc970;
+  }
+  .search-item a {
+    font-size: 18px;
+    color: #384047;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .search-item a:hover {
+    color: #4bc970;
+  }
+  .search-date {
+    font-size: 13px;
+    color: #8a97a0;
+  }
+  .back-link {
+    display: block;
+    text-align: center;
+    margin-top: 30px;
+    color: #4bc970;
+    text-decoration: none;
+    font-size: 16px;
+  }
+  .back-link:hover {
+    text-decoration: underline;
+  }
+  .empty-msg {
+    text-align: center;
+    color: #8a97a0;
+    font-size: 16px;
+    margin-top: 40px;
+  }
+    </style>
+</head>
+<body>
+<h1>Past Searches</h1>
+
+<div class="search-list">
+{% if searches|length == 0 %}
+<p class="empty-msg">No past searches found. Try running a new search first.</p>
+{% else %}
+{% for search in searches %}
+<div class="search-item">
+    <a href="/history/results?query={{ search[0] | urlencode }}">{{ search[0] }}</a>
+    <span class="search-date">{{ search[1] }}</span>
+</div>
+{% endfor %}
+{% endif %}
+</div>
+
+<a class="back-link" href="/">Back to Search</a>
+
+</body>
+</html>

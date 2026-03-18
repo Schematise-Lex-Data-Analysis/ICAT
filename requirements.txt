@@ -1,7 +1,11 @@
 gunicorn
+azure-ai-inference
 python-dotenv
 flask
 bs4
 pandas
 requests
-
+transformers
+torch
+psycopg
+pytz
