@@ -55,6 +55,94 @@ def classify_with_azure(text: str) -> bool:
     return label == "contractclause"
 
 
+def expand_and_classify_with_azure(doc_text: str, snippet: str,
+                                   context_before: int = 2000,
+                                   context_after: int = 3000) -> dict:
+    """Expand a snippet to its full clause and classify it in a single LLM call.
+
+    Instead of using regex-based boundary detection, sends a context window
+    around the snippet to the LLM and lets it determine where the clause
+    naturally begins and ends, while also classifying it.
+
+    Returns dict with:
+        clause_text (str): the full clause as extracted by the LLM
+        is_contract_clause (bool): True if the LLM considers it a contract clause
+    """
+    import json as _json
+    from insert_data import _find_snippet_position
+
+    fallback = {"clause_text": snippet or "", "is_contract_clause": False}
+
+    if not snippet:
+        return fallback
+
+    # Build context window around the snippet
+    context_window = None
+    if doc_text:
+        pos = _find_snippet_position(doc_text, snippet)
+        if pos != -1:
+            start = max(0, pos - context_before)
+            end = min(len(doc_text), pos + len(snippet) + context_after)
+            context_window = doc_text[start:end]
+
+    # Build user message
+    if context_window:
+        user_content = (
+            f"CONTEXT WINDOW:\n---\n{context_window}\n---\n\n"
+            f"MATCHED SNIPPET:\n---\n{snippet}\n---"
+        )
+    else:
+        user_content = (
+            f"MATCHED SNIPPET (no surrounding context available):\n---\n{snippet}\n---"
+        )
+
+    client = get_azure_client()
+    response = client.complete(
+        model=os.environ["AZURE_INFERENCE_MODEL"],
+        messages=[
+            SystemMessage(content=(
+                "You are a legal document analyst. You will receive a matched snippet "
+                "from a legal document, and optionally a context window surrounding it.\n\n"
+                "Your tasks:\n"
+                "1. If a context window is provided, identify the full clause or section "
+                "that contains the snippet. Use your judgment to determine where the clause "
+                "naturally begins and ends \u2014 look for structural markers like section numbers, "
+                "article headings, defined-term introductions, or natural paragraph boundaries, "
+                "but rely primarily on semantic completeness of the legal provision.\n"
+                "2. If no context window is provided, use the snippet as-is.\n"
+                "3. Classify whether the extracted clause is a contract clause (a binding "
+                "provision such as non-compete, non-solicitation, confidentiality, termination, "
+                "indemnification, intellectual property assignment, restrictive covenant, etc.) "
+                "or not.\n\n"
+                "Respond with JSON only, no markdown fencing:\n"
+                "{\"clause_text\": \"the complete clause text exactly as it appears\", "
+                "\"is_contract_clause\": true or false}"
+            )),
+            UserMessage(content=user_content),
+        ],
+        max_tokens=2000,
+        temperature=0,
+    )
+
+    raw = response.choices[0].message.content.strip()
+
+    # Parse JSON response
+    try:
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        result = _json.loads(raw)
+        return {
+            "clause_text": result.get("clause_text", snippet),
+            "is_contract_clause": bool(result.get("is_contract_clause", False)),
+        }
+    except (_json.JSONDecodeError, KeyError, TypeError):
+        is_clause = (
+            "contractclause" in raw.replace(" ", "").lower()
+            or '"is_contract_clause": true' in raw.lower()
+        )
+        return {"clause_text": snippet, "is_contract_clause": is_clause}
+
+
 def pipeline_operations(results):
     """
     Run each result's matching_columns and matching_indents through the
