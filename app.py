@@ -14,6 +14,20 @@ headers = {
 }
 
 
+def fetch_docmeta(doc_id: str, req_headers: dict) -> dict:
+    """Fetch document metadata from Indian Kanoon /docmeta/ endpoint."""
+    try:
+        url = f'https://api.indiankanoon.org/docmeta/{doc_id}/'
+        res = requests.post(url, headers=req_headers).json()
+        return {
+            'court_name': res.get('court_name', '') or res.get('docsource', ''),
+            'judgment_date': res.get('publishdate', '') or res.get('date', ''),
+            'case_citation': res.get('citation', '') or res.get('title', ''),
+        }
+    except Exception:
+        return {'court_name': '', 'judgment_date': '', 'case_citation': ''}
+
+
 def create_app():
 
     app = Flask(__name__)
@@ -86,9 +100,10 @@ def create_app():
                     doc_id = str(doc.get('tid', ''))
                     if doc_id:
                         if doc_id not in lst_data:
-                            lst_data[doc_id] = {'id': doc_id, 'title': '', 'size': ''}
+                            lst_data[doc_id] = {'id': doc_id, 'title': '', 'size': '', 'docsource': ''}
                         lst_data[doc_id]['title'] = doc.get('title', '')
                         lst_data[doc_id]['size'] = doc.get('docsize', '')
+                        lst_data[doc_id]['docsource'] = doc.get('docsource', '')
         return lst_data
 
     def get_text_for_new_docs(list_of_docs_not_present, searchusr, lst):

@@ -71,6 +71,32 @@
       font-size: 14px;
       line-height: 1.5;
     }
+    .confidence-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #fff;
+      margin-left: 6px;
+    }
+    .confidence-high { background: #4bc970; }
+    .confidence-medium { background: #f0ad4e; }
+    .confidence-low { background: #d9534f; }
+    .provenance {
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 2px;
+    }
+    .sentiment-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .sentiment-positive { background: #d4edda; color: #155724; }
+    .sentiment-negative { background: #f8d7da; color: #721c24; }
 table {
       width: 100%;
       border-collapse: collapse;
@@ -94,6 +120,31 @@ table {
 
 <td>
 <a href="https://indiankanoon.org/doc/{{ results[result]['DocID'] }}">{{ results[result]['Title'] }}</a>
+<div class="provenance">
+{% if results[result].get('court_name') %}
+{{ results[result]['court_name'] }}
+{% endif %}
+{% if results[result].get('judgment_date') %}
+ | {{ results[result]['judgment_date'] }}
+{% endif %}
+{% if results[result].get('case_citation') %}
+ | {{ results[result]['case_citation'] }}
+{% endif %}
+</div>
+{% if results[result].get('classification_confidence') %}
+{% set conf = results[result]['classification_confidence']|float %}
+<span class="confidence-badge {% if conf >= 0.8 %}confidence-high{% elif conf >= 0.5 %}confidence-medium{% else %}confidence-low{% endif %}">
+  Confidence: {{ "%.0f"|format(conf * 100) }}%
+</span>
+{% endif %}
+{% if results[result].get('sentiment') %}
+<span class="sentiment-tag {% if 'negative' in results[result]['sentiment'] %}sentiment-negative{% else %}sentiment-positive{% endif %}">
+  {{ results[result]['sentiment'] }}
+  {% if results[result].get('sentiment_confidence') %}
+  ({{ "%.0f"|format(results[result]['sentiment_confidence']|float * 100) }}%)
+  {% endif %}
+</span>
+{% endif %}
 </td>
 <td>
 

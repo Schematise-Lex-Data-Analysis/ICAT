@@ -51,7 +51,10 @@ def initialize_db(conn):
                 Title   TEXT,
                 Doc_Text        TEXT,
                 Doc_Blockquotes TEXT,
-                Doc_Size        TEXT
+                Doc_Size        TEXT,
+                court_name      TEXT,
+                judgment_date   TEXT,
+                case_citation   TEXT
             )
         ''')
         cur.execute('''
@@ -66,17 +69,35 @@ def initialize_db(conn):
                 expanded_columns TEXT,
                 expanded_indents TEXT,
                 expanded_columns_after_classification TEXT,
-                expanded_indents_after_classification TEXT
+                expanded_indents_after_classification TEXT,
+                extracted_discussion TEXT,
+                sentiment TEXT,
+                classification_confidence TEXT,
+                classification_reasoning TEXT,
+                sentiment_confidence TEXT
             )
         ''')
         # Add columns for existing databases that don't have them yet
         for col in ['expanded_columns', 'expanded_indents',
                      'expanded_columns_after_classification',
-                     'expanded_indents_after_classification']:
+                     'expanded_indents_after_classification',
+                     'extracted_discussion', 'sentiment',
+                     'classification_confidence', 'classification_reasoning',
+                     'sentiment_confidence']:
             try:
+                cur.execute(f'SAVEPOINT sp_{col}')
                 cur.execute(f'ALTER TABLE classified_index ADD COLUMN {col} TEXT')
+                cur.execute(f'RELEASE SAVEPOINT sp_{col}')
             except Exception:
-                conn.rollback()
+                cur.execute(f'ROLLBACK TO SAVEPOINT sp_{col}')
+        # Add provenance columns to stored_results for existing databases
+        for col in ['court_name', 'judgment_date', 'case_citation']:
+            try:
+                cur.execute(f'SAVEPOINT sp_sr_{col}')
+                cur.execute(f'ALTER TABLE stored_results ADD COLUMN {col} TEXT')
+                cur.execute(f'RELEASE SAVEPOINT sp_sr_{col}')
+            except Exception:
+                cur.execute(f'ROLLBACK TO SAVEPOINT sp_sr_{col}')
         cur.execute('''
             CREATE TABLE IF NOT EXISTS search_queries (
                 searchquery TEXT,
@@ -241,8 +262,11 @@ def add_classified_results(conn, dict_of_results, searchquery):
             matching_indents_after_classification,
             expanded_columns, expanded_indents,
             expanded_columns_after_classification,
-            expanded_indents_after_classification
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            expanded_indents_after_classification,
+            extracted_discussion, sentiment,
+            classification_confidence, classification_reasoning,
+            sentiment_confidence
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
     sql_search = '''
         INSERT INTO search_queries(searchquery, dateandtime) VALUES (%s, %s)
@@ -265,6 +289,11 @@ def add_classified_results(conn, dict_of_results, searchquery):
                     str(result.get('expanded_indents', [])),
                     str(result.get('expanded_columns_after_classification', [])),
                     str(result.get('expanded_indents_after_classification', [])),
+                    result.get('extracted_discussion', ''),
+                    result.get('sentiment', ''),
+                    str(result.get('classification_confidence', '')),
+                    result.get('classification_reasoning', ''),
+                    str(result.get('sentiment_confidence', '')),
                 ))
             cur.execute(sql_search, (searchquery, current_datetime_ist))
             conn.commit()
@@ -399,15 +428,21 @@ def get_past_searches(conn):
 
 
 def get_stored_results_for_query(conn, searchquery):
-    """Fetch classified_index rows for a given past search query."""
+    """Fetch classified_index rows joined with stored_results provenance for a past search query."""
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT Doc_Id, Title, matching_indents, matching_columns, "
-                "matching_columns_after_classification, matching_indents_after_classification, "
-                "expanded_columns, expanded_indents, "
-                "expanded_columns_after_classification, expanded_indents_after_classification "
-                "FROM classified_index WHERE searchquery = %s",
+                "SELECT ci.Doc_Id, ci.Title, ci.matching_indents, ci.matching_columns, "
+                "ci.matching_columns_after_classification, ci.matching_indents_after_classification, "
+                "ci.expanded_columns, ci.expanded_indents, "
+                "ci.expanded_columns_after_classification, ci.expanded_indents_after_classification, "
+                "ci.extracted_discussion, ci.sentiment, "
+                "ci.classification_confidence, ci.classification_reasoning, "
+                "ci.sentiment_confidence, "
+                "sr.court_name, sr.judgment_date, sr.case_citation "
+                "FROM classified_index ci "
+                "LEFT JOIN stored_results sr ON ci.Doc_Id = sr.Doc_ID "
+                "WHERE ci.searchquery = %s",
                 (searchquery,),
             )
             rows = cur.fetchall()
@@ -428,6 +463,15 @@ def get_stored_results_for_query(conn, searchquery):
             'expanded_indents': _safe_eval(row[7]),
             'expanded_columns_after_classification': _safe_eval(row[8]),
             'expanded_indents_after_classification': _safe_eval(row[9]),
+            'extracted_discussion': row[10] or '',
+            'sentiment': row[11] or '',
+            'classification_confidence': row[12] or '',
+            'classification_reasoning': row[13] or '',
+            'sentiment_confidence': row[14] or '',
+            'court_name': row[15] or '',
+            'judgment_date': row[16] or '',
+            'case_citation': row[17] or '',
+            'indiankanoon_url': f"https://indiankanoon.org/doc/{row[0]}/",
         })
     return results
 
@@ -475,6 +519,11 @@ def find_matching_text(column_value):
     for match in matches:
         matching_text.append(match.group())
     return matching_text
+
+
+def indiankanoon_url(doc_id: str) -> str:
+    """Compute the Indian Kanoon URL for a document — no DB column needed."""
+    return f"https://indiankanoon.org/doc/{doc_id}/"
 
 
 def main(conn, list_of_docs_already_present, lst_new_data, query):
