@@ -7,15 +7,24 @@ from azure.core.credentials import AzureKeyCredential
 load_dotenv()
 
 _azure_client = None
+_azure_client_call_count = 0
+_AZURE_CLIENT_MAX_CALLS = 20  # recreate client every N calls to prevent C-level memory buildup
 
 
 def get_azure_client():
-    global _azure_client
-    if _azure_client is None:
+    global _azure_client, _azure_client_call_count
+    _azure_client_call_count += 1
+    if _azure_client is None or _azure_client_call_count >= _AZURE_CLIENT_MAX_CALLS:
+        if _azure_client is not None:
+            try:
+                _azure_client.close()
+            except Exception:
+                pass
         _azure_client = ChatCompletionsClient(
             endpoint=os.environ["AZURE_INFERENCE_ENDPOINT"],
             credential=AzureKeyCredential(os.environ["AZURE_INFERENCE_API_KEY"]),
         )
+        _azure_client_call_count = 0
     return _azure_client
 
 
@@ -158,13 +167,25 @@ def expand_and_classify_with_azure(conn, doc_id: str, snippet: str,
         }
 
 
-def _extract_discussion_single_chunk(doc_chunk: str, contract_clause: str,
+def _extract_discussion_single_chunk(conn, doc_id: str, chunk_start: int,
+                                      chunk_len: int, contract_clause: str,
                                       chunk_label: str = "") -> dict:
     """Extract discussion from a single chunk of judgment text.
+    Fetches the chunk via SUBSTRING — text never leaves this function's scope.
 
     Internal helper — callers should use extract_discussion_with_azure().
     """
     import json as _json
+
+    # Fetch chunk text from DB — only exists as a local var in this function
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT SUBSTRING(Doc_Text FROM %s FOR %s) FROM stored_results WHERE Doc_ID = %s",
+            (chunk_start, chunk_len, doc_id))
+        doc_chunk = (cur.fetchone() or ('',))[0]
+
+    if not doc_chunk:
+        return {"discussion": "", "sentiment": "", "sentiment_confidence": 0.0}
 
     system_prompt = (
         "You are a legal judgment analyst. You will receive "
@@ -260,43 +281,32 @@ def extract_discussion_with_azure(conn, doc_id: str, contract_clause: str,
     if doc_len == 0:
         return fallback
 
-    # If document fits in a single chunk, fetch and process directly
-    if doc_len <= max_chunk_chars:
-        with conn.cursor() as cur:
-            cur.execute("SELECT Doc_Text FROM stored_results WHERE Doc_ID = %s", (doc_id,))
-            chunk_text = (cur.fetchone() or ('',))[0]
-        result = _extract_discussion_single_chunk(chunk_text, contract_clause)
-        del chunk_text
-        return result
+    # Cap the scan region to avoid dozens of LLM calls on huge documents.
+    # Court discussion of a specific clause rarely appears beyond the first ~500K chars.
+    MAX_SCAN_CHARS = 500_000
+    scan_len = min(doc_len, MAX_SCAN_CHARS)
 
-    # Build chunk ranges for large documents (SQL SUBSTRING is 1-based)
+    # Build chunk ranges (SQL SUBSTRING is 1-based)
     chunk_ranges = []
     start = 1
     chunk_num = 1
-    total_chunks = max(1, (doc_len - 1) // max_chunk_chars + 1)
-    while start <= doc_len:
-        chunk_len = min(max_chunk_chars, doc_len - start + 1)
+    total_chunks = max(1, (scan_len - 1) // max_chunk_chars + 1)
+    while start <= scan_len:
+        chunk_len = min(max_chunk_chars, scan_len - start + 1)
         chunk_ranges.append((start, chunk_len,
                              f"section {chunk_num} of {total_chunks}"))
         chunk_num += 1
         start = start + chunk_len - overlap_chars
-        if start > doc_len:
+        if start > scan_len:
             break
 
-    # Process each chunk — fetch from DB one at a time
+    # Process each chunk — text fetch happens inside the helper, never here
     best_result = fallback
     all_discussions = []
 
     for (chunk_start, chunk_len, label) in chunk_ranges:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT SUBSTRING(Doc_Text FROM %s FOR %s) FROM stored_results WHERE Doc_ID = %s",
-                (chunk_start, chunk_len, doc_id))
-            chunk_text = (cur.fetchone() or ('',))[0]
-        if not chunk_text:
-            continue
-        result = _extract_discussion_single_chunk(chunk_text, contract_clause, label)
-        del chunk_text
+        result = _extract_discussion_single_chunk(
+            conn, doc_id, chunk_start, chunk_len, contract_clause, label)
         if result['discussion']:
             all_discussions.append(result)
             if result['sentiment_confidence'] > best_result.get('sentiment_confidence', 0.0):
