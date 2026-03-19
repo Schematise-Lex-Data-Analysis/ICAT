@@ -6,6 +6,6 @@ bs4
 pandas
 requests
 transformers
-torch
+#torch
 psycopg
 pytz
