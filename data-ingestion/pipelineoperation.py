@@ -215,7 +215,7 @@ def _extract_discussion_single_chunk(doc_chunk: str, contract_clause: str,
 
 
 def extract_discussion_with_azure(doc_text: str, contract_clause: str,
-                                   max_chunk_chars: int = 80000,
+                                   max_chunk_chars: int = 40000,
                                    overlap_chars: int = 2000) -> dict:
     """Extract the most succinct court discussion of a contractual clause from a judgment.
 
@@ -289,59 +289,39 @@ def extract_discussion_with_azure(doc_text: str, contract_clause: str,
     return best_result
 
 
-def extract_metadata_with_azure(doc_text: str) -> dict:
-    """Extract court metadata from the first 2000 chars of a judgment.
+def extract_metadata_with_indiankanoon(doc_id: str, api_headers: dict) -> dict:
+    """Extract court metadata from Indian Kanoon API.
 
-    Returns dict with:
+    Queries the Indian Kanoon /docmeta/ endpoint to retrieve:
         court_name (str): name of the court
-        judgment_date (str): date of judgment in YYYY-MM-DD format
+        judgment_date (str): date of judgment
         case_citation (str): case citation or title
+
+    Args:
+        doc_id (str): The Indian Kanoon document ID
+        api_headers (dict): Request headers with authorization token
+
+    Returns:
+        dict with court_name, judgment_date, case_citation keys
     """
-    import json as _json
+    import requests
 
     fallback = {"court_name": "", "judgment_date": "", "case_citation": ""}
 
-    if not doc_text:
+    if not doc_id:
         return fallback
 
-    # Use only the first 2000 chars — metadata is typically at the top
-    text_excerpt = doc_text[:2000]
-
-    client = get_azure_client()
-    response = client.complete(
-        model=os.environ["AZURE_INFERENCE_MODEL"],
-        messages=[
-            SystemMessage(content=(
-                "You are a legal metadata extractor. You will receive the beginning of an "
-                "Indian court judgment. Extract the following metadata:\n\n"
-                "1. court_name: The name of the court (e.g. 'Supreme Court of India', "
-                "'Delhi High Court', 'Bombay High Court').\n"
-                "2. judgment_date: The date of the judgment in YYYY-MM-DD format. "
-                "If only a year is available, use YYYY-01-01.\n"
-                "3. case_citation: The formal case citation or case number "
-                "(e.g. 'W.P.(C) 1234/2020', 'Civil Appeal No. 5678 of 2019').\n\n"
-                "Respond with JSON only, no markdown fencing:\n"
-                "{\"court_name\": \"...\", \"judgment_date\": \"YYYY-MM-DD\", "
-                "\"case_citation\": \"...\"}"
-            )),
-            UserMessage(content=text_excerpt),
-        ],
-        max_tokens=200,
-        temperature=0,
-    )
-
-    raw = response.choices[0].message.content.strip()
-
     try:
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        result = _json.loads(raw)
+        url = f'https://api.indiankanoon.org/docmeta/{doc_id}/'
+        response = requests.post(url, headers=api_headers, timeout=10)
+        response.raise_for_status()
+        res = response.json()
         return {
-            "court_name": result.get("court_name", ""),
-            "judgment_date": result.get("judgment_date", ""),
-            "case_citation": result.get("case_citation", ""),
+            'court_name': res.get('court_name', '') or res.get('docsource', ''),
+            'judgment_date': res.get('publishdate', '') or res.get('date', ''),
+            'case_citation': res.get('citation', '') or res.get('title', ''),
         }
-    except (_json.JSONDecodeError, KeyError, TypeError):
+    except Exception:
         return fallback
 
 
