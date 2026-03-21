@@ -13,6 +13,12 @@ headers = {
     'authorization': f"Token {api_key}"
 }
 
+ALL_SUFFIXES = [
+    ("clause which reads as", "clause which reads as"),
+    (" mutually agreed", "mutually agreed"),
+    ("clause states the following", "clause states the following"),
+]
+
 
 def fetch_docmeta(doc_id: str, req_headers: dict) -> dict:
     """Fetch document metadata from Indian Kanoon /docmeta/ endpoint."""
@@ -77,23 +83,23 @@ def create_app():
 
         return st, filtered_paragraphs
 
-    def get_docs(search):
+    def get_docs(search, suffixes=None, page_max=2):
         """
         Search IndianKanoon for documents matching the query.
         Returns a dict: {doc_id: {'id': str, 'title': str, 'size': str}}
+        suffixes: list of query suffix strings to use (defaults to all 3)
+        page_max: highest page number to fetch (0-2 inclusive)
         """
         global headers
+        if suffixes is None:
+            suffixes = [s[0] for s in ALL_SUFFIXES]
+
         S = requests.Session()
         S.headers = headers
-        query_suffixes = [
-            "clause which reads as",
-            " mutually agreed",
-            "clause states the following",
-        ]
         lst_data = {}
-        for qry in query_suffixes:
+        for qry in suffixes:
             search_query = ('"' + search + '"' + qry).replace(' ', '+')
-            for page_num in range(0, 3):
+            for page_num in range(0, min(page_max + 1, 3)):
                 url = f'https://api.indiankanoon.org/search/?formInput={search_query}&pagenum={page_num}'
                 res = S.post(url).json()
                 for doc in res.get('docs', []):
@@ -131,11 +137,13 @@ def create_app():
 
     @app.route('/')
     def home():
-        return render_template('home.html')
+        return render_template('dashboard.html', all_suffixes=ALL_SUFFIXES)
 
     @app.route('/history')
     def history():
         conn = insert_data.create_connection()
+        if conn is None:
+            return render_template('error.html', message="Database connection failed. Please configure DB credentials.")
         insert_data.initialize_db(conn)
         searches = insert_data.get_past_searches(conn)
         conn.close()
@@ -147,6 +155,8 @@ def create_app():
         if not query:
             return render_template('noresults.html')
         conn = insert_data.create_connection()
+        if conn is None:
+            return render_template('error.html', message="Database connection failed.")
         insert_data.initialize_db(conn)
         results = insert_data.get_stored_results_for_query(conn, query)
         conn.close()
@@ -156,6 +166,7 @@ def create_app():
                 results=results,
                 ln_lst=len(results),
                 search_query=query,
+                from_history=True,
             )
         return render_template('noresults.html')
 
@@ -165,9 +176,27 @@ def create_app():
         if not shortcode:
             return render_template('noresults.html')
 
-        lst = get_docs(shortcode)
+        # Parse search options from the dashboard form
+        selected_suffixes = request.args.getlist('suffixes')
+        if not selected_suffixes:
+            selected_suffixes = [s[0] for s in ALL_SUFFIXES]
+
+        try:
+            page_max = int(request.args.get('page_max', 2))
+            page_max = max(0, min(page_max, 2))
+        except (ValueError, TypeError):
+            page_max = 2
+
+        classifier = request.args.get('classifier', 'azure')
+
+        lst = get_docs(shortcode, suffixes=selected_suffixes, page_max=page_max)
+
+        if not lst:
+            return render_template('noresults.html')
 
         conn = insert_data.create_connection()
+        if conn is None:
+            return render_template('error.html', message="Database connection failed. Please configure DB credentials.")
         insert_data.initialize_db(conn)
 
         list_not_present = insert_data.check_for_already_present(conn, lst)
@@ -181,26 +210,42 @@ def create_app():
         results = insert_data.main(conn, list_already_present, lst_new_data, shortcode)
 
         if results:
-            # Expand snippets to full clause text before classification
             results = insert_data.expand_matched_results(conn, results)
 
-            try:
-                results_classified = pipelineoperation.pipeline_operations(results)
-                insert_data.add_classified_results(conn, results_classified, shortcode)
-            except Exception as e:
-                print(f"ML classification failed, falling back to unclassified results: {e}")
+            if classifier == 'azure':
+                try:
+                    results_classified = pipelineoperation.pipeline_operations(results)
+                    insert_data.add_classified_results(conn, results_classified, shortcode)
+                except Exception as e:
+                    print(f"Azure classification failed, falling back to regex results: {e}")
+                    for r in results:
+                        r['matching_columns_after_classification'] = r.get('matching_columns', [])
+                        r['matching_indents_after_classification'] = r.get('matching_indents', [])
+                        r['expanded_columns_after_classification'] = r.get('expanded_columns', [])
+                        r['expanded_indents_after_classification'] = r.get('expanded_indents', [])
+                    results_classified = results
+            else:
+                # Regex-only: no LLM, pass through all matched clauses as-is
                 for r in results:
                     r['matching_columns_after_classification'] = r.get('matching_columns', [])
                     r['matching_indents_after_classification'] = r.get('matching_indents', [])
                     r['expanded_columns_after_classification'] = r.get('expanded_columns', [])
                     r['expanded_indents_after_classification'] = r.get('expanded_indents', [])
                 results_classified = results
+                try:
+                    insert_data.add_classified_results(conn, results_classified, shortcode)
+                except Exception:
+                    pass
 
             conn.close()
             return render_template(
                 'results.html',
                 results=results_classified,
                 ln_lst=len(results_classified),
+                search_query=shortcode,
+                classifier=classifier,
+                page_max=page_max,
+                selected_suffixes=selected_suffixes,
             )
 
         conn.close()

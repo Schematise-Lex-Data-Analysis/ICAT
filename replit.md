@@ -46,10 +46,20 @@ The DB connection falls back to Replit-provided `PG*` vars if `DB_*` vars are no
 - **Development**: `python main.py` (port 5000)
 - **Production**: `gunicorn --bind=0.0.0.0:5000 --reuse-port main:app`
 
+## Routes
+
+- `GET /` — Dashboard (main search page)
+- `GET /confirm?shortcode=&suffixes[]=&page_max=&classifier=` — Run a search
+- `GET /history` — Past searches list
+- `GET /history/results?query=` — View stored results for a past query
+
 ## Key Features
 
-1. Search for contractual clauses in Indian court judgments
-2. Caches document text in PostgreSQL to avoid redundant API calls
-3. ML classification via Azure AI to filter true contract clauses
-4. Clause expansion to extract full context around matched snippets
-5. Search history browsing
+1. Full search dashboard with configurable query suffixes, page range (1–3), and classifier backend
+2. IndianKanoon API integration for document retrieval
+3. Regex + blockquote matching to find clause text in documents
+4. Clause expansion using boundary detection to extract full clause context
+5. Azure AI (Llama 3.3 70B) classification pipeline to filter genuine contract clauses
+6. Regex-only mode for fast, LLM-free results
+7. PostgreSQL caching — already-seen documents are not re-fetched
+8. Search history with stored classified results
