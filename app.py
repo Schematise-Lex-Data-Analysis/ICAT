@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 import requests
 import insert_data
-import pipelineoperation
+import second_pipelineoperation
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import os
@@ -187,7 +187,7 @@ def create_app():
         except (ValueError, TypeError):
             page_max = 2
 
-        classifier = request.args.get('classifier', 'azure')
+        classifier = request.args.get('classifier', 'hf_azure')
 
         lst = get_docs(shortcode, suffixes=selected_suffixes, page_max=page_max)
 
@@ -212,12 +212,12 @@ def create_app():
         if results:
             results = insert_data.expand_matched_results(conn, results)
 
-            if classifier == 'azure':
+            if classifier == 'hf_azure':
                 try:
-                    results_classified = pipelineoperation.pipeline_operations(results)
+                    results_classified = second_pipelineoperation.pipeline_operations(results)
                     insert_data.add_classified_results(conn, results_classified, shortcode)
                 except Exception as e:
-                    print(f"Azure classification failed, falling back to regex results: {e}")
+                    print(f"Classification failed, falling back to regex results: {e}")
                     for r in results:
                         r['matching_columns_after_classification'] = r.get('matching_columns', [])
                         r['matching_indents_after_classification'] = r.get('matching_indents', [])

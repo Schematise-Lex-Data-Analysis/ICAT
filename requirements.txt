@@ -9,3 +9,7 @@ transformers
 #torch
 psycopg
 pytz
+beautifulsoup4
+httpx
+torch
+transformers

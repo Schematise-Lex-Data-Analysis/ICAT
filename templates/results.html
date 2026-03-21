@@ -228,8 +228,8 @@
     {% if from_history %}
     <span class="pill blue">From history</span>
     {% else %}
-    {% if classifier == 'azure' %}
-    <span class="pill green">Azure AI classified</span>
+    {% if classifier == 'hf_azure' %}
+    <span class="pill green">HuggingFace + Azure AI</span>
     {% else %}
     <span class="pill">Regex match only</span>
     {% endif %}
@@ -270,6 +270,16 @@
       <a class="badge badge-ik" href="https://indiankanoon.org/doc/{{ r['DocID'] }}" target="_blank" rel="noopener">
         ↗ IndianKanoon
       </a>
+
+      {% if r.get('classification_backend') %}
+      {% set cb = r['classification_backend'] %}
+      <span class="badge" style="background:#f0fff4;color:#276749;font-weight:600;">
+        {% if cb == 'local' %}🔵 Local HF
+        {% elif cb == 'azure' %}☁ Azure AI
+        {% elif cb == 'mixed' %}🔀 HF + Azure
+        {% else %}Regex{% endif %}
+      </span>
+      {% endif %}
 
       {% if r.get('classification_confidence') %}
       {% set conf = r['classification_confidence']|float %}

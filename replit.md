@@ -12,18 +12,20 @@ A Flask web application for searching Indian court judgments for contractual cla
 ## Project Structure
 
 ```
-app.py                  - Flask application factory
-main.py                 - Entry point (runs Flask on port 5000)
+app.py                          - Flask application factory
+main.py                         - Entry point (runs Flask on port 5000)
 data-ingestion/
-  insert_data.py        - Database operations (symlinked to root as insert_data.py)
-  pipelineoperation.py  - Azure AI classification pipeline (symlinked to root)
+  insert_data.py                - Database operations (symlinked to root)
+  pipelineoperation.py          - Azure-only classification pipeline (reference)
+  second_pipelineoperation.py   - HuggingFace-primary + Azure-fallback pipeline
+                                  (symlinked to root, used by app.py)
 templates/              - Jinja2 HTML templates
 static/                 - Static assets (images, etc.)
 ```
 
 ## Module Symlinks
 
-`insert_data.py` and `pipelineoperation.py` in the project root are symlinks to their counterparts in `data-ingestion/`. This is required because `app.py` imports them directly.
+`insert_data.py`, `pipelineoperation.py`, and `second_pipelineoperation.py` in the project root are symlinks to their counterparts in `data-ingestion/`. This is required because `app.py` imports them directly.
 
 ## Environment Variables
 

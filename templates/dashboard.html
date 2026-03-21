@@ -173,6 +173,7 @@
     }
     .radio-item .radio-label { font-size: 14px; color: #4a5568; font-weight: 600; }
     .radio-item .radio-desc { font-size: 12px; color: #a0aec0; line-height: 1.4; }
+    .radio-item .radio-desc code { font-family: monospace; font-size: 11px; background: #edf2f7; padding: 1px 4px; border-radius: 3px; color: #4a5568; }
 
     .range-row {
       display: flex;
@@ -322,17 +323,17 @@
         <label class="group-label">Classification Method</label>
         <div class="radio-list" style="display:flex;flex-direction:row;gap:24px;flex-wrap:wrap;">
           <label class="radio-item">
-            <input type="radio" name="classifier" value="azure" checked>
+            <input type="radio" name="classifier" value="hf_azure" checked>
             <div>
-              <div class="radio-label">Azure AI (Llama 3.3 70B)</div>
-              <div class="radio-desc">Uses LLM to classify whether matched text is a genuine contract clause, extract the full clause, and judge court sentiment.</div>
+              <div class="radio-label">HuggingFace + Azure AI fallback</div>
+              <div class="radio-desc">Runs a local NLI model (<code>cross-encoder/nli-MiniLM2-L6-H768</code>) first. Automatically falls back to Azure AI (Llama 3.3 70B) when local confidence is low or the model is unavailable.</div>
             </div>
           </label>
           <label class="radio-item">
             <input type="radio" name="classifier" value="regex">
             <div>
-              <div class="radio-label">Regex only (no LLM)</div>
-              <div class="radio-desc">Returns all regex-matched and blockquote-matched snippets without LLM filtering. Faster, works without Azure credentials.</div>
+              <div class="radio-label">Regex only (no AI)</div>
+              <div class="radio-desc">Returns all regex-matched and blockquote-matched snippets without any AI filtering. Fastest option — works with no credentials.</div>
             </div>
           </label>
         </div>
