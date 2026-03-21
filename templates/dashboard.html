@@ -291,6 +291,19 @@
               <span>{{ label }}</span>
             </label>
             {% endfor %}
+            <label class="checkbox-item">
+              <input type="checkbox" name="use_custom_suffix" id="use_custom_suffix" value="1" onchange="document.getElementById('custom_suffix').disabled = !this.checked;">
+              <span>Custom suffix</span>
+            </label>
+            <input
+              type="text"
+              name="custom_suffix"
+              id="custom_suffix"
+              class="search-input"
+              style="font-size:13px;padding:8px 12px;margin-top:4px;width:100%;"
+              placeholder='e.g. "clause provides that"'
+              disabled
+            >
           </div>
         </div>
 

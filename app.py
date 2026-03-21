@@ -173,6 +173,11 @@ def create_app():
         if not selected_suffixes:
             selected_suffixes = [s[0] for s in ALL_SUFFIXES]
 
+        # Append custom suffix if provided and enabled
+        custom_suffix = request.args.get('custom_suffix', '').strip()
+        if request.args.get('use_custom_suffix') and custom_suffix:
+            selected_suffixes.append(custom_suffix)
+
         try:
             page_max = int(request.args.get('page_max', 2))
             page_max = max(0, min(page_max, 2))
