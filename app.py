@@ -13,6 +13,12 @@ headers = {
     'authorization': f"Token {api_key}"
 }
 
+# Default classification backend from env (.env.example key: CLASSIFIER_BACKEND)
+_DEFAULT_CLASSIFIER = os.environ.get("CLASSIFIER_BACKEND", "huggingface").strip().lower()
+# Normalise: anything that isn't "regex" maps to "huggingface"
+if _DEFAULT_CLASSIFIER not in ("huggingface", "regex"):
+    _DEFAULT_CLASSIFIER = "huggingface"
+
 ALL_SUFFIXES = [
     ("clause which reads as", "clause which reads as"),
     (" mutually agreed", "mutually agreed"),
@@ -137,7 +143,7 @@ def create_app():
 
     @app.route('/')
     def home():
-        return render_template('dashboard.html', all_suffixes=ALL_SUFFIXES)
+        return render_template('dashboard.html', all_suffixes=ALL_SUFFIXES, default_classifier=_DEFAULT_CLASSIFIER)
 
     @app.route('/history')
     def history():
@@ -187,7 +193,7 @@ def create_app():
         except (ValueError, TypeError):
             page_max = 2
 
-        classifier = request.args.get('classifier', 'hf_azure')
+        classifier = request.args.get('classifier', _DEFAULT_CLASSIFIER)
 
         lst = get_docs(shortcode, suffixes=selected_suffixes, page_max=page_max)
 
@@ -212,7 +218,7 @@ def create_app():
         if results:
             results = insert_data.expand_matched_results(conn, results)
 
-            if classifier == 'hf_azure':
+            if classifier == 'huggingface':
                 try:
                     results_classified = second_pipelineoperation.pipeline_operations(results)
                     insert_data.add_classified_results(conn, results_classified, shortcode)

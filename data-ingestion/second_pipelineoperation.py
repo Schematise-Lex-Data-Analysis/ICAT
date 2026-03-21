@@ -1,13 +1,24 @@
 """
 second_pipelineoperation.py
 
-Classification pipeline that uses a local HuggingFace NLI model as the primary
-classifier, with Azure AI (Llama) as a fallback if the local model fails or is
-unavailable.
+Classification pipeline driven by the CLASSIFIER_BACKEND environment variable
+(matches .env.example):
 
-Primary:  zero-shot classification via transformers pipeline
-           (default model: cross-encoder/nli-MiniLM2-L6-H768)
-Fallback: Azure AI inference endpoint (same as pipelineoperation.py)
+  CLASSIFIER_BACKEND=huggingface  (default)
+      Primary:  local HuggingFace zero-shot NLI model  (HF_TOKEN for private repos)
+      Fallback: Azure AI inference endpoint
+
+  CLASSIFIER_BACKEND=azure
+      Only Azure AI is used (no local model loaded).
+
+All credential env vars mirror .env.example exactly:
+  API_KEY                   — IndianKanoon (used in app.py)
+  HF_TOKEN                  — HuggingFace token (private model repos)
+  DB_HOST / DB_NAME / DB_USER / DB_PASS / SSLMODE  — Postgres
+  AZURE_INFERENCE_ENDPOINT  — Azure AI endpoint URL
+  AZURE_INFERENCE_API_KEY   — Azure AI API key
+  AZURE_INFERENCE_MODEL     — model name (default: Llama-3.3-70B-Instruct)
+  CLASSIFIER_BACKEND        — "huggingface" | "azure"
 """
 
 import os
@@ -21,17 +32,32 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────
-# Configuration
+# Read CLASSIFIER_BACKEND from env (.env.example key)
+# ──────────────────────────────────────────────
+
+CLASSIFIER_BACKEND = os.environ.get("CLASSIFIER_BACKEND", "huggingface").strip().lower()
+
+# ──────────────────────────────────────────────
+# HuggingFace configuration  (only when backend = huggingface)
 # ──────────────────────────────────────────────
 
 HF_MODEL = os.environ.get(
     "HF_CLASSIFIER_MODEL",
     "cross-encoder/nli-MiniLM2-L6-H768",   # ~90 MB, fast on CPU
 )
+HF_TOKEN = os.environ.get("HF_TOKEN") or None          # for private HF repos
 HF_CANDIDATE_LABELS = ["contract clause", "other text"]
 HF_CLAUSE_LABEL = "contract clause"
-# Confidence threshold below which we fall back to Azure
+# Confidence below this → fall back to Azure
 HF_CONFIDENCE_THRESHOLD = float(os.environ.get("HF_CONFIDENCE_THRESHOLD", "0.55"))
+
+# ──────────────────────────────────────────────
+# Azure configuration  (mirroring .env.example keys exactly)
+# ──────────────────────────────────────────────
+
+AZURE_INFERENCE_ENDPOINT  = os.environ.get("AZURE_INFERENCE_ENDPOINT", "")
+AZURE_INFERENCE_API_KEY   = os.environ.get("AZURE_INFERENCE_API_KEY", "")
+AZURE_INFERENCE_MODEL     = os.environ.get("AZURE_INFERENCE_MODEL", "Llama-3.3-70B-Instruct")
 
 # ──────────────────────────────────────────────
 # Lazy-loaded HuggingFace pipeline
@@ -50,42 +76,41 @@ def _get_hf_classifier():
         return None
     try:
         from transformers import pipeline as hf_pipeline
-        hf_token = os.environ.get("HF_TOKEN") or None
         logger.info(f"Loading local HF classifier: {HF_MODEL}")
         _hf_classifier = hf_pipeline(
             "zero-shot-classification",
             model=HF_MODEL,
-            token=hf_token,
-            device=-1,          # CPU
+            token=HF_TOKEN,         # HF_TOKEN from .env.example
+            device=-1,              # CPU
         )
-        logger.info("Local HF classifier loaded successfully.")
+        logger.info("Local HF classifier loaded.")
         return _hf_classifier
     except Exception as e:
-        logger.warning(f"Could not load local HF classifier ({HF_MODEL}): {e}. "
-                       "Will use Azure fallback for all classifications.")
+        logger.warning(
+            f"Could not load local HF classifier ({HF_MODEL}): {e}. "
+            "Will use Azure for all classifications."
+        )
         _hf_load_failed = True
         return None
 
 
 # ──────────────────────────────────────────────
-# Lazy-loaded Azure client (fallback)
+# Lazy-loaded Azure client
 # ──────────────────────────────────────────────
 
 _azure_client = None
 
 
 def _get_azure_client():
-    """Return an OpenAI-compatible client pointing at the Azure AI endpoint."""
+    """Return an OpenAI-compatible client for the Azure AI endpoint."""
     global _azure_client
     if _azure_client is not None:
         return _azure_client
-    endpoint = os.environ.get("AZURE_INFERENCE_ENDPOINT", "")
-    api_key = os.environ.get("AZURE_INFERENCE_API_KEY", "")
-    if not endpoint or not api_key:
+    if not AZURE_INFERENCE_ENDPOINT or not AZURE_INFERENCE_API_KEY:
         return None
     _azure_client = OpenAI(
-        base_url=endpoint.rstrip("/"),
-        api_key=api_key,
+        base_url=AZURE_INFERENCE_ENDPOINT.rstrip("/"),
+        api_key=AZURE_INFERENCE_API_KEY,
         http_client=httpx.Client(limits=httpx.Limits(
             max_keepalive_connections=2,
             max_connections=5,
@@ -96,43 +121,38 @@ def _get_azure_client():
 
 
 # ──────────────────────────────────────────────
-# Individual classifiers
+# Individual backend classifiers
 # ──────────────────────────────────────────────
 
-def _classify_local(text: str) -> tuple[bool, float]:
+def _classify_local(text: str) -> tuple:
     """
-    Run zero-shot classification locally.
-    Returns (is_contract_clause: bool, confidence: float).
-    Raises RuntimeError if local model is unavailable.
+    Run zero-shot classification with the local HF model.
+    Returns (is_clause: bool, confidence: float).
+    Raises RuntimeError if unavailable.
     """
     clf = _get_hf_classifier()
     if clf is None:
         raise RuntimeError("Local HF classifier unavailable.")
-
-    # Truncate to avoid hitting model token limits (~512 tokens ≈ 1800 chars)
     snippet = text[:1800] if len(text) > 1800 else text
-
     result = clf(snippet, candidate_labels=HF_CANDIDATE_LABELS)
-    # result["labels"] is sorted by score descending
     top_label = result["labels"][0]
     top_score = result["scores"][0]
-    is_clause = (top_label == HF_CLAUSE_LABEL)
-    return is_clause, top_score
+    return (top_label == HF_CLAUSE_LABEL), top_score
 
 
-def _classify_azure(text: str) -> tuple[bool, float]:
+def _classify_azure(text: str) -> tuple:
     """
-    Classify via Azure AI (Llama).
-    Returns (is_contract_clause: bool, confidence: float).
-    Raises RuntimeError if Azure is unavailable.
+    Classify via Azure AI (Llama). Uses AZURE_INFERENCE_* env vars.
+    Returns (is_clause: bool, confidence: float).
+    Raises RuntimeError if Azure is not configured.
     """
     client = _get_azure_client()
     if client is None:
-        raise RuntimeError("Azure AI client unavailable (check AZURE_INFERENCE_ENDPOINT / AZURE_INFERENCE_API_KEY).")
-
-    model = os.environ.get("AZURE_INFERENCE_MODEL", "Llama-3.3-70B-Instruct")
+        raise RuntimeError(
+            "Azure AI not configured. Set AZURE_INFERENCE_ENDPOINT and AZURE_INFERENCE_API_KEY."
+        )
     response = client.chat.completions.create(
-        model=model,
+        model=AZURE_INFERENCE_MODEL,
         messages=[
             {"role": "system", "content": (
                 "You are a legal text classifier. "
@@ -147,61 +167,74 @@ def _classify_azure(text: str) -> tuple[bool, float]:
     label = response.choices[0].message.content.strip().lower()
     del response
     is_clause = (label == "contractclause")
-    # Azure gives a hard yes/no; assign a nominal confidence
-    return is_clause, 0.9 if is_clause else 0.85
+    return is_clause, (0.9 if is_clause else 0.85)
 
 
 # ──────────────────────────────────────────────
-# Combined classifier: local first, Azure fallback
+# Combined entry point: respects CLASSIFIER_BACKEND
 # ──────────────────────────────────────────────
 
-def classify_text(text: str) -> tuple[bool, float, str]:
+def classify_text(text: str) -> tuple:
     """
     Classify a text snippet as a contract clause or not.
-    Tries local HuggingFace model first; falls back to Azure AI.
 
-    Returns:
-        (is_contract_clause: bool, confidence: float, backend: str)
-        where backend is 'local' or 'azure'.
+    When CLASSIFIER_BACKEND=huggingface (default):
+      - Tries local HF model first.
+      - Falls back to Azure if local fails or confidence < HF_CONFIDENCE_THRESHOLD.
+
+    When CLASSIFIER_BACKEND=azure:
+      - Goes straight to Azure AI.
+
+    Returns (is_clause: bool, confidence: float, backend: str)
     """
-    # --- Try local ---
+    if CLASSIFIER_BACKEND == "azure":
+        try:
+            is_clause, conf = _classify_azure(text)
+            return is_clause, conf, "azure"
+        except Exception as e:
+            logger.warning(f"Azure classifier failed: {e}. Defaulting to False.")
+            return False, 0.0, "error"
+
+    # --- CLASSIFIER_BACKEND == "huggingface" ---
     try:
         is_clause, confidence = _classify_local(text)
-        # If the local model is uncertain (score close to 50/50), fall through to Azure
         if confidence >= HF_CONFIDENCE_THRESHOLD:
             return is_clause, confidence, "local"
-        logger.debug(f"Local confidence {confidence:.2f} below threshold {HF_CONFIDENCE_THRESHOLD}; trying Azure.")
+        logger.debug(
+            f"Local confidence {confidence:.2f} < threshold {HF_CONFIDENCE_THRESHOLD}; "
+            "falling back to Azure."
+        )
     except Exception as e:
-        logger.warning(f"Local classifier failed: {e}. Falling back to Azure.")
+        logger.warning(f"Local HF classifier failed: {e}. Falling back to Azure.")
 
-    # --- Fallback: Azure ---
     try:
-        is_clause, confidence = _classify_azure(text)
-        return is_clause, confidence, "azure"
+        is_clause, conf = _classify_azure(text)
+        return is_clause, conf, "azure"
     except Exception as e:
-        logger.warning(f"Azure classifier also failed: {e}. Defaulting to False.")
+        logger.warning(f"Azure fallback also failed: {e}. Defaulting to False.")
         return False, 0.0, "error"
 
 
 # ──────────────────────────────────────────────
-# Public pipeline interface (same as pipelineoperation.py)
+# Public pipeline interface  (same signature as pipelineoperation.py)
 # ──────────────────────────────────────────────
 
 def pipeline_operations(results: list) -> list:
     """
-    Run classification over each result's matching_columns and matching_indents,
-    plus their expanded counterparts.
+    Classify each result's matched snippets (columns + indents, raw + expanded).
 
-    Uses local HuggingFace model as primary classifier, Azure AI as fallback.
+    Reads CLASSIFIER_BACKEND from env to pick the classification strategy:
+      huggingface → local NLI first, Azure fallback
+      azure       → Azure only
 
-    Returns the same list with four new keys added per result:
-      - matching_columns_after_classification
-      - matching_indents_after_classification
-      - expanded_columns_after_classification
-      - expanded_indents_after_classification
+    Adds four classification keys per result (same as pipelineoperation.py):
+      matching_columns_after_classification
+      matching_indents_after_classification
+      expanded_columns_after_classification
+      expanded_indents_after_classification
 
-    Also adds per-result metadata:
-      - classification_backend  ('local' | 'azure' | 'error' | 'mixed')
+    Also adds:
+      classification_backend  — 'local' | 'azure' | 'mixed' | 'error'
     """
     for result in results:
         backends_used = set()

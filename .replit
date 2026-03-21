@@ -9,8 +9,8 @@ packages = ["glibcLocales", "libpq", "postgresql"]
 [userenv]
 
 [userenv.shared]
-SSLMODE = "prefer"
-CLASSIFIER_BACKEND = "azure"
+SSLMODE = "require"
+CLASSIFIER_BACKEND = "huggingface"
 AZURE_INFERENCE_MODEL = "Llama-3.3-70B-Instruct"
 
 [workflows]

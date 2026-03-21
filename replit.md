@@ -27,7 +27,7 @@ static/                 - Static assets (images, etc.)
 
 `insert_data.py`, `pipelineoperation.py`, and `second_pipelineoperation.py` in the project root are symlinks to their counterparts in `data-ingestion/`. This is required because `app.py` imports them directly.
 
-## Environment Variables
+## Environment Variables  (mirror of .env.example)
 
 The app uses these environment variables (set in Replit Secrets):
 - `API_KEY` - IndianKanoon API token
