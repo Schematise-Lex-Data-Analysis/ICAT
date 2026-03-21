@@ -298,39 +298,31 @@
 
   <div class="result-body">
 
-    {% set expanded_cols = r.get('expanded_columns_after_classification', []) %}
-    {% set expanded_inds = r.get('expanded_indents_after_classification', []) %}
-    {% set raw_cols = r.get('matching_columns_after_classification', []) %}
-    {% set raw_inds = r.get('matching_indents_after_classification', []) %}
-
-    {% if expanded_cols|length > 0 %}
-    <div class="section-label">Extracted contract clauses (regex match, expanded)</div>
-    {% for text in expanded_cols %}
-    <div class="clause-block">{{ text }}</div>
+    {# Collect ALL classified clauses into one list #}
+    {% set all_clauses = [] %}
+    {% for text in r.get('expanded_columns_after_classification', []) %}
+      {% if all_clauses.append(text) %}{% endif %}
     {% endfor %}
-    {% elif raw_cols|length > 0 %}
-    <div class="section-label">Matched text (regex)</div>
-    {% for text in raw_cols %}
-    <div class="clause-block">{{ text }}</div>
+    {% for text in r.get('expanded_indents_after_classification', []) %}
+      {% if all_clauses.append(text) %}{% endif %}
     {% endfor %}
+    {# Fallback to raw matched text if no expanded clauses available #}
+    {% if all_clauses|length == 0 %}
+      {% for text in r.get('matching_columns_after_classification', []) %}
+        {% if all_clauses.append(text) %}{% endif %}
+      {% endfor %}
+      {% for text in r.get('matching_indents_after_classification', []) %}
+        {% if all_clauses.append(text) %}{% endif %}
+      {% endfor %}
     {% endif %}
 
-    {% if expanded_inds|length > 0 %}
-    {% if expanded_cols|length > 0 %}<hr class="divider">{% endif %}
-    <div class="section-label">Indented blockquote clauses (expanded)</div>
-    {% for indent in expanded_inds %}
-    <div class="clause-block">{{ indent }}</div>
+    {% if all_clauses|length > 0 %}
+    <div class="section-label">Classified Contract Clauses ({{ all_clauses|length }})</div>
+    {% for text in all_clauses %}
+    <div class="clause-block">{{ text }}</div>
     {% endfor %}
-    {% elif raw_inds|length > 0 %}
-    {% if raw_cols|length > 0 %}<hr class="divider">{% endif %}
-    <div class="section-label">Indented blockquote clauses</div>
-    {% for indent in raw_inds %}
-    <div class="clause-block">{{ indent }}</div>
-    {% endfor %}
-    {% endif %}
-
-    {% if expanded_cols|length == 0 and expanded_inds|length == 0 and raw_cols|length == 0 and raw_inds|length == 0 %}
-    <p class="no-clauses">No clause text extracted for this document.</p>
+    {% else %}
+    <p class="no-clauses">No contract clauses identified for this document.</p>
     {% endif %}
 
     {% if r.get('extracted_discussion') %}

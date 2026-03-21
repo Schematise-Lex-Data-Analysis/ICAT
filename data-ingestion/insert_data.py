@@ -100,9 +100,16 @@ def initialize_db(conn):
                 cur.execute(f'RELEASE SAVEPOINT sp_sr_{col}')
             except Exception:
                 cur.execute(f'ROLLBACK TO SAVEPOINT sp_sr_{col}')
-        # Add unique constraint on classified_index for existing databases
+        # Add unique constraint on classified_index for existing databases.
+        # Must deduplicate first — duplicates prevent ADD CONSTRAINT UNIQUE.
         try:
             cur.execute('SAVEPOINT sp_ci_unique')
+            cur.execute('''
+                DELETE FROM classified_index
+                WHERE ctid NOT IN (
+                    SELECT MIN(ctid) FROM classified_index GROUP BY Doc_Id, searchquery
+                )
+            ''')
             cur.execute('ALTER TABLE classified_index ADD CONSTRAINT classified_index_doc_query_unique UNIQUE (Doc_Id, searchquery)')
             cur.execute('RELEASE SAVEPOINT sp_ci_unique')
         except Exception:
@@ -323,6 +330,19 @@ def add_classified_results(conn, dict_of_results, searchquery):
             conn.commit()
     except Exception as e:
         print(f"Error adding classified results: {e}")
+        conn.rollback()
+
+
+def update_stored_result_metadata(conn, doc_id, court_name, judgment_date, case_citation):
+    """Update court metadata columns on an existing stored_results row."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE stored_results SET court_name=%s, judgment_date=%s, case_citation=%s WHERE Doc_ID=%s",
+                (court_name, judgment_date, case_citation, doc_id))
+            conn.commit()
+    except Exception as e:
+        print(f"Error updating metadata for {doc_id}: {e}")
         conn.rollback()
 
 

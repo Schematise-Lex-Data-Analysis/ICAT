@@ -26,20 +26,6 @@ ALL_SUFFIXES = [
 ]
 
 
-def fetch_docmeta(doc_id: str, req_headers: dict) -> dict:
-    """Fetch document metadata from Indian Kanoon /docmeta/ endpoint."""
-    try:
-        url = f'https://api.indiankanoon.org/docmeta/{doc_id}/'
-        res = requests.post(url, headers=req_headers).json()
-        return {
-            'court_name': res.get('court_name', '') or res.get('docsource', ''),
-            'judgment_date': res.get('publishdate', '') or res.get('date', ''),
-            'case_citation': res.get('citation', '') or res.get('title', ''),
-        }
-    except Exception:
-        return {'court_name': '', 'judgment_date': '', 'case_citation': ''}
-
-
 def create_app():
 
     app = Flask(__name__)
@@ -221,7 +207,74 @@ def create_app():
             if classifier == 'huggingface':
                 try:
                     results_classified = second_pipelineoperation.pipeline_operations(results)
+
+                    # Enrichment: get confidence, reasoning, discussion, sentiment, metadata per result
+                    for r in results_classified:
+                        # Pick best classified snippet for enrichment
+                        best_snippet = None
+                        for source in ('expanded_columns_after_classification',
+                                       'expanded_indents_after_classification',
+                                       'matching_columns_after_classification',
+                                       'matching_indents_after_classification'):
+                            items = r.get(source, [])
+                            if items:
+                                best_snippet = items[0]
+                                break
+
+                        if best_snippet:
+                            clause_text = best_snippet
+                            try:
+                                ec_result = second_pipelineoperation.expand_and_classify(
+                                    conn, r['DocID'], best_snippet)
+                                r['classification_confidence'] = ec_result.get('classification_confidence', 0.0)
+                                r['classification_reasoning'] = ec_result.get('classification_reasoning', '')
+                                r['classification_backend'] = (
+                                    'local' if 'local HF' in ec_result.get('classification_reasoning', '')
+                                    else 'azure')
+                                clause_text = ec_result.get('clause_text', best_snippet)
+                            except Exception as e:
+                                print(f"expand_and_classify failed for {r['DocID']}: {e}")
+                                r['classification_confidence'] = ''
+                                r['classification_reasoning'] = ''
+                                r['classification_backend'] = 'local'
+
+                            try:
+                                disc_result = second_pipelineoperation.extract_discussion_with_azure(
+                                    conn, r['DocID'], clause_text)
+                                r['extracted_discussion'] = disc_result.get('discussion', '')
+                                r['sentiment'] = disc_result.get('sentiment', '')
+                                r['sentiment_confidence'] = disc_result.get('sentiment_confidence', 0.0)
+                            except Exception as e:
+                                print(f"extract_discussion failed for {r['DocID']}: {e}")
+                                r['extracted_discussion'] = ''
+                                r['sentiment'] = ''
+                                r['sentiment_confidence'] = ''
+                        else:
+                            r['classification_confidence'] = ''
+                            r['classification_reasoning'] = ''
+                            r['classification_backend'] = 'local'
+                            r['extracted_discussion'] = ''
+                            r['sentiment'] = ''
+                            r['sentiment_confidence'] = ''
+
+                        # Fetch metadata from IndianKanoon API
+                        try:
+                            meta = second_pipelineoperation.extract_metadata_with_indiankanoon(
+                                r['DocID'], headers)
+                            r['court_name'] = meta.get('court_name', '')
+                            r['judgment_date'] = meta.get('judgment_date', '')
+                            r['case_citation'] = meta.get('case_citation', '')
+                            insert_data.update_stored_result_metadata(
+                                conn, r['DocID'],
+                                r['court_name'], r['judgment_date'], r['case_citation'])
+                        except Exception as e:
+                            print(f"Metadata fetch failed for {r['DocID']}: {e}")
+                            r['court_name'] = ''
+                            r['judgment_date'] = ''
+                            r['case_citation'] = ''
+
                     insert_data.add_classified_results(conn, results_classified, shortcode)
+
                 except Exception as e:
                     print(f"Classification failed, falling back to regex results: {e}")
                     for r in results:
@@ -237,6 +290,22 @@ def create_app():
                     r['matching_indents_after_classification'] = r.get('matching_indents', [])
                     r['expanded_columns_after_classification'] = r.get('expanded_columns', [])
                     r['expanded_indents_after_classification'] = r.get('expanded_indents', [])
+
+                    # Still fetch metadata even in regex mode
+                    try:
+                        meta = second_pipelineoperation.extract_metadata_with_indiankanoon(
+                            r['DocID'], headers)
+                        r['court_name'] = meta.get('court_name', '')
+                        r['judgment_date'] = meta.get('judgment_date', '')
+                        r['case_citation'] = meta.get('case_citation', '')
+                        insert_data.update_stored_result_metadata(
+                            conn, r['DocID'],
+                            r['court_name'], r['judgment_date'], r['case_citation'])
+                    except Exception:
+                        r['court_name'] = ''
+                        r['judgment_date'] = ''
+                        r['case_citation'] = ''
+
                 results_classified = results
                 try:
                     insert_data.add_classified_results(conn, results_classified, shortcode)
