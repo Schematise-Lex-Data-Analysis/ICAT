@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 import requests
 import insert_data
-import pipelineoperation
+import second_pipelineoperation
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import os
@@ -13,19 +13,17 @@ headers = {
     'authorization': f"Token {api_key}"
 }
 
+# Default classification backend from env (.env.example key: CLASSIFIER_BACKEND)
+_DEFAULT_CLASSIFIER = os.environ.get("CLASSIFIER_BACKEND", "huggingface").strip().lower()
+# Normalise: anything that isn't "regex" maps to "huggingface"
+if _DEFAULT_CLASSIFIER not in ("huggingface", "regex"):
+    _DEFAULT_CLASSIFIER = "huggingface"
 
-def fetch_docmeta(doc_id: str, req_headers: dict) -> dict:
-    """Fetch document metadata from Indian Kanoon /docmeta/ endpoint."""
-    try:
-        url = f'https://api.indiankanoon.org/docmeta/{doc_id}/'
-        res = requests.post(url, headers=req_headers).json()
-        return {
-            'court_name': res.get('court_name', '') or res.get('docsource', ''),
-            'judgment_date': res.get('publishdate', '') or res.get('date', ''),
-            'case_citation': res.get('citation', '') or res.get('title', ''),
-        }
-    except Exception:
-        return {'court_name': '', 'judgment_date': '', 'case_citation': ''}
+ALL_SUFFIXES = [
+    ("clause which reads as", "clause which reads as"),
+    (" mutually agreed", "mutually agreed"),
+    ("clause states the following", "clause states the following"),
+]
 
 
 def create_app():
@@ -77,23 +75,23 @@ def create_app():
 
         return st, filtered_paragraphs
 
-    def get_docs(search):
+    def get_docs(search, suffixes=None, page_max=2):
         """
         Search IndianKanoon for documents matching the query.
         Returns a dict: {doc_id: {'id': str, 'title': str, 'size': str}}
+        suffixes: list of query suffix strings to use (defaults to all 3)
+        page_max: highest page number to fetch (0-2 inclusive)
         """
         global headers
+        if suffixes is None:
+            suffixes = [s[0] for s in ALL_SUFFIXES]
+
         S = requests.Session()
         S.headers = headers
-        query_suffixes = [
-            "clause which reads as",
-            " mutually agreed",
-            "clause states the following",
-        ]
         lst_data = {}
-        for qry in query_suffixes:
+        for qry in suffixes:
             search_query = ('"' + search + '"' + qry).replace(' ', '+')
-            for page_num in range(0, 3):
+            for page_num in range(0, min(page_max + 1, 3)):
                 url = f'https://api.indiankanoon.org/search/?formInput={search_query}&pagenum={page_num}'
                 res = S.post(url).json()
                 for doc in res.get('docs', []):
@@ -131,11 +129,13 @@ def create_app():
 
     @app.route('/')
     def home():
-        return render_template('home.html')
+        return render_template('dashboard.html', all_suffixes=ALL_SUFFIXES, default_classifier=_DEFAULT_CLASSIFIER)
 
     @app.route('/history')
     def history():
         conn = insert_data.create_connection()
+        if conn is None:
+            return render_template('error.html', message="Database connection failed. Please configure DB credentials.")
         insert_data.initialize_db(conn)
         searches = insert_data.get_past_searches(conn)
         conn.close()
@@ -147,6 +147,8 @@ def create_app():
         if not query:
             return render_template('noresults.html')
         conn = insert_data.create_connection()
+        if conn is None:
+            return render_template('error.html', message="Database connection failed.")
         insert_data.initialize_db(conn)
         results = insert_data.get_stored_results_for_query(conn, query)
         conn.close()
@@ -156,6 +158,7 @@ def create_app():
                 results=results,
                 ln_lst=len(results),
                 search_query=query,
+                from_history=True,
             )
         return render_template('noresults.html')
 
@@ -165,9 +168,32 @@ def create_app():
         if not shortcode:
             return render_template('noresults.html')
 
-        lst = get_docs(shortcode)
+        # Parse search options from the dashboard form
+        selected_suffixes = request.args.getlist('suffixes')
+        if not selected_suffixes:
+            selected_suffixes = [s[0] for s in ALL_SUFFIXES]
+
+        # Append custom suffix if provided and enabled
+        custom_suffix = request.args.get('custom_suffix', '').strip()
+        if request.args.get('use_custom_suffix') and custom_suffix:
+            selected_suffixes.append(custom_suffix)
+
+        try:
+            page_max = int(request.args.get('page_max', 2))
+            page_max = max(0, min(page_max, 2))
+        except (ValueError, TypeError):
+            page_max = 2
+
+        classifier = request.args.get('classifier', _DEFAULT_CLASSIFIER)
+
+        lst = get_docs(shortcode, suffixes=selected_suffixes, page_max=page_max)
+
+        if not lst:
+            return render_template('noresults.html')
 
         conn = insert_data.create_connection()
+        if conn is None:
+            return render_template('error.html', message="Database connection failed. Please configure DB credentials.")
         insert_data.initialize_db(conn)
 
         list_not_present = insert_data.check_for_already_present(conn, lst)
@@ -181,26 +207,125 @@ def create_app():
         results = insert_data.main(conn, list_already_present, lst_new_data, shortcode)
 
         if results:
-            # Expand snippets to full clause text before classification
             results = insert_data.expand_matched_results(conn, results)
 
-            try:
-                results_classified = pipelineoperation.pipeline_operations(results)
-                insert_data.add_classified_results(conn, results_classified, shortcode)
-            except Exception as e:
-                print(f"ML classification failed, falling back to unclassified results: {e}")
+            if classifier == 'huggingface':
+                try:
+                    results_classified = second_pipelineoperation.pipeline_operations(results)
+
+                    # Enrichment: get confidence, reasoning, discussion, sentiment, metadata per result
+                    for r in results_classified:
+                        # Pick best classified snippet for enrichment
+                        best_snippet = None
+                        for source in ('expanded_columns_after_classification',
+                                       'expanded_indents_after_classification',
+                                       'matching_columns_after_classification',
+                                       'matching_indents_after_classification'):
+                            items = r.get(source, [])
+                            if items:
+                                best_snippet = items[0]
+                                break
+
+                        if best_snippet:
+                            clause_text = best_snippet
+                            try:
+                                ec_result = second_pipelineoperation.expand_and_classify(
+                                    conn, r['DocID'], best_snippet)
+                                r['classification_confidence'] = ec_result.get('classification_confidence', 0.0)
+                                r['classification_reasoning'] = ec_result.get('classification_reasoning', '')
+                                r['classification_backend'] = (
+                                    'local' if 'local HF' in ec_result.get('classification_reasoning', '')
+                                    else 'azure')
+                                clause_text = ec_result.get('clause_text', best_snippet)
+                            except Exception as e:
+                                print(f"expand_and_classify failed for {r['DocID']}: {e}")
+                                r['classification_confidence'] = ''
+                                r['classification_reasoning'] = ''
+                                r['classification_backend'] = 'local'
+
+                            try:
+                                disc_result = second_pipelineoperation.extract_discussion_with_azure(
+                                    conn, r['DocID'], clause_text)
+                                r['extracted_discussion'] = disc_result.get('discussion', '')
+                                r['sentiment'] = disc_result.get('sentiment', '')
+                                r['sentiment_confidence'] = disc_result.get('sentiment_confidence', 0.0)
+                            except Exception as e:
+                                print(f"extract_discussion failed for {r['DocID']}: {e}")
+                                r['extracted_discussion'] = ''
+                                r['sentiment'] = ''
+                                r['sentiment_confidence'] = ''
+                        else:
+                            r['classification_confidence'] = ''
+                            r['classification_reasoning'] = ''
+                            r['classification_backend'] = 'local'
+                            r['extracted_discussion'] = ''
+                            r['sentiment'] = ''
+                            r['sentiment_confidence'] = ''
+
+                        # Fetch metadata from IndianKanoon API
+                        try:
+                            meta = second_pipelineoperation.extract_metadata_with_indiankanoon(
+                                r['DocID'], headers)
+                            r['court_name'] = meta.get('court_name', '')
+                            r['judgment_date'] = meta.get('judgment_date', '')
+                            r['case_citation'] = meta.get('case_citation', '')
+                            insert_data.update_stored_result_metadata(
+                                conn, r['DocID'],
+                                r['court_name'], r['judgment_date'], r['case_citation'])
+                        except Exception as e:
+                            print(f"Metadata fetch failed for {r['DocID']}: {e}")
+                            r['court_name'] = ''
+                            r['judgment_date'] = ''
+                            r['case_citation'] = ''
+
+                    insert_data.add_classified_results(conn, results_classified, shortcode)
+
+                except Exception as e:
+                    print(f"Classification failed, falling back to regex results: {e}")
+                    for r in results:
+                        r['matching_columns_after_classification'] = r.get('matching_columns', [])
+                        r['matching_indents_after_classification'] = r.get('matching_indents', [])
+                        r['expanded_columns_after_classification'] = r.get('expanded_columns', [])
+                        r['expanded_indents_after_classification'] = r.get('expanded_indents', [])
+                    results_classified = results
+            else:
+                # Regex-only: no LLM, pass through all matched clauses as-is
                 for r in results:
                     r['matching_columns_after_classification'] = r.get('matching_columns', [])
                     r['matching_indents_after_classification'] = r.get('matching_indents', [])
                     r['expanded_columns_after_classification'] = r.get('expanded_columns', [])
                     r['expanded_indents_after_classification'] = r.get('expanded_indents', [])
+
+                    # Still fetch metadata even in regex mode
+                    try:
+                        meta = second_pipelineoperation.extract_metadata_with_indiankanoon(
+                            r['DocID'], headers)
+                        r['court_name'] = meta.get('court_name', '')
+                        r['judgment_date'] = meta.get('judgment_date', '')
+                        r['case_citation'] = meta.get('case_citation', '')
+                        insert_data.update_stored_result_metadata(
+                            conn, r['DocID'],
+                            r['court_name'], r['judgment_date'], r['case_citation'])
+                    except Exception:
+                        r['court_name'] = ''
+                        r['judgment_date'] = ''
+                        r['case_citation'] = ''
+
                 results_classified = results
+                try:
+                    insert_data.add_classified_results(conn, results_classified, shortcode)
+                except Exception:
+                    pass
 
             conn.close()
             return render_template(
                 'results.html',
                 results=results_classified,
                 ln_lst=len(results_classified),
+                search_query=shortcode,
+                classifier=classifier,
+                page_max=page_max,
+                selected_suffixes=selected_suffixes,
             )
 
         conn.close()

@@ -1,181 +1,346 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Results page</title>
-    <link href='https://fonts.googleapis.com/css?family=Nunito:400,300' rel='stylesheet' type='text/css'>
-<div class="logo-container">
-  <img id="desktop-logo" src="../static/images/ikanoon6_powered_transparent.png" alt="Desktop Logo">
-</div>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results — {{ search_query }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <style>
-        *, *:before, *:after {
-    -moz-box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    box-sizing: border-box;
-  }
-  body {
-    font-family: 'Nunito', sans-serif;
-    color: #384047;
-  }
-  input[type="text"],
-  select {
-    background: rgba(255,255,255,0.1);
-    border: none;
-    font-size: 16px;
-    height: auto;
-    margin: 0;
-    outline: 0;
-    padding: 15px;
-    width: 100%;
-    background-color: #e8eeef;
-    color: #8a97a0;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.03) inset;
-    margin-bottom: 30px;
-  }
-  form {
-    max-width: 500px;
-    margin: 10px auto;
-    padding: 10px 20px;
-    background: #f4f7f8;
-    border-radius: 8px;
-  }
-  h1 {
-    margin: 0 0 30px 0;
-    text-align: center;
-  }
-  #btn {
-    padding: 19px 39px 18px 39px;
-    color: #FFF;
-    background-color: #4bc970;
-    font-size: 18px;
-    text-align: center;
-    font-style: normal;
-    border-radius: 5px;
-    width: 100%;
-    border: 1px solid #3ac162;
-    border-width: 1px 1px 3px;
-    box-shadow: 0 -1px 0 rgba(255,255,255,0.1) inset;
-    margin-bottom: 10px;
-  }
-  label {
-    display: block;
-    margin-bottom: 8px;
-  }
-    .clause-box {
-      border-left: 4px solid #4bc970;
-      background: #f9fdf9;
-      padding: 12px 16px;
-      margin: 8px 0;
-      white-space: pre-wrap;
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: #f0f4f8;
+      color: #2d3748;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header .brand {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2d3748;
+      letter-spacing: -0.3px;
+    }
+    header .brand span { color: #4bc970; }
+    header nav a {
       font-size: 14px;
+      color: #718096;
+      text-decoration: none;
+      margin-left: 20px;
+      font-weight: 600;
+    }
+    header nav a:hover { color: #4bc970; }
+
+    .results-header {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 28px 24px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .results-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a202c;
+    }
+    .results-header h1 em {
+      font-style: normal;
+      color: #4bc970;
+    }
+    .meta-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #edf2f7;
+      color: #718096;
+    }
+    .pill.green { background: #c6f6d5; color: #276749; }
+    .pill.blue  { background: #bee3f8; color: #2c5282; }
+
+    .results-body {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    .result-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .result-head {
+      padding: 18px 24px;
+      border-bottom: 1px solid #f0f4f8;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .doc-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #2d3748;
+      text-decoration: none;
+    }
+    .doc-title:hover { color: #4bc970; }
+
+    .doc-meta {
+      font-size: 12px;
+      color: #a0aec0;
+      margin-top: 4px;
       line-height: 1.5;
     }
-    .confidence-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
+
+    .badges {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .badge-high       { background: #c6f6d5; color: #276749; }
+    .badge-medium     { background: #fef3c7; color: #92400e; }
+    .badge-low        { background: #fed7d7; color: #9b1c1c; }
+    .badge-positive   { background: #d1fae5; color: #065f46; }
+    .badge-negative   { background: #fee2e2; color: #991b1b; }
+    .badge-ik         { background: #ebf8ff; color: #2b6cb0; text-decoration: none; }
+    .badge-ik:hover   { background: #bee3f8; }
+
+    .result-body { padding: 20px 24px; }
+
+    .section-label {
       font-size: 11px;
-      font-weight: bold;
-      color: #fff;
-      margin-left: 6px;
+      font-weight: 700;
+      color: #a0aec0;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 10px;
     }
-    .confidence-high { background: #4bc970; }
-    .confidence-medium { background: #f0ad4e; }
-    .confidence-low { background: #d9534f; }
-    .provenance {
+
+    .clause-block {
+      border-left: 3px solid #4bc970;
+      background: #f7fdf9;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      border-radius: 0 6px 6px 0;
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #2d3748;
+      white-space: pre-wrap;
+    }
+
+    .discussion-block {
+      border-left: 3px solid #63b3ed;
+      background: #ebf8ff;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      border-radius: 0 6px 6px 0;
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #2d3748;
+      white-space: pre-wrap;
+    }
+
+    .reasoning-block {
       font-size: 12px;
-      color: #6c757d;
-      margin-top: 2px;
+      color: #718096;
+      font-style: italic;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #fafafa;
+      border-radius: 6px;
     }
-    .sentiment-tag {
+
+    .divider { border: none; border-top: 1px solid #f0f4f8; margin: 16px 0; }
+
+    .no-clauses {
+      font-size: 13px;
+      color: #cbd5e0;
+      font-style: italic;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      color: #a0aec0;
+    }
+    .empty-state h2 { font-size: 20px; margin-bottom: 8px; color: #4a5568; }
+
+    .back-link {
       display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-top: 4px;
+      margin-top: 24px;
+      color: #4bc970;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
     }
-    .sentiment-positive { background: #d4edda; color: #155724; }
-    .sentiment-negative { background: #f8d7da; color: #721c24; }
-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    td {
-      vertical-align: top;
-      padding: 10px;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    </style>
+    .back-link:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
-<h1>Results</h1>
-<table>
-<tr>
-<td><strong>Document Title</strong></td>
-<td><strong>Matching extract</strong></td>
-</tr>
-{% for result in range(ln_lst) %}
-<tr>
 
-<td>
-<a href="https://indiankanoon.org/doc/{{ results[result]['DocID'] }}">{{ results[result]['Title'] }}</a>
-<div class="provenance">
-{% if results[result].get('court_name') %}
-{{ results[result]['court_name'] }}
-{% endif %}
-{% if results[result].get('judgment_date') %}
- | {{ results[result]['judgment_date'] }}
-{% endif %}
-{% if results[result].get('case_citation') %}
- | {{ results[result]['case_citation'] }}
-{% endif %}
+<header>
+  <div class="brand">ICAT <span>·</span> Contract Clause Search</div>
+  <nav>
+    <a href="/">New Search</a>
+    <a href="/history">History</a>
+  </nav>
+</header>
+
+<div class="results-header">
+  <div>
+    <h1>Results for <em>{{ search_query }}</em></h1>
+    <div style="font-size:13px;color:#a0aec0;margin-top:4px;">{{ ln_lst }} document{{ 's' if ln_lst != 1 else '' }} found</div>
+  </div>
+  <div class="meta-pills">
+    {% if from_history %}
+    <span class="pill blue">From history</span>
+    {% else %}
+    {% if classifier == 'huggingface' %}
+    <span class="pill green">HuggingFace + Azure AI</span>
+    {% else %}
+    <span class="pill">Regex match only</span>
+    {% endif %}
+    {% if page_max is defined %}
+    <span class="pill">{{ page_max + 1 }} page{{ 's' if page_max > 0 else '' }}</span>
+    {% endif %}
+    {% endif %}
+  </div>
 </div>
-{% if results[result].get('classification_confidence') %}
-{% set conf = results[result]['classification_confidence']|float %}
-<span class="confidence-badge {% if conf >= 0.8 %}confidence-high{% elif conf >= 0.5 %}confidence-medium{% else %}confidence-low{% endif %}">
-  Confidence: {{ "%.0f"|format(conf * 100) }}%
-</span>
-{% endif %}
-{% if results[result].get('sentiment') %}
-<span class="sentiment-tag {% if 'negative' in results[result]['sentiment'] %}sentiment-negative{% else %}sentiment-positive{% endif %}">
-  {{ results[result]['sentiment'] }}
-  {% if results[result].get('sentiment_confidence') %}
-  ({{ "%.0f"|format(results[result]['sentiment_confidence']|float * 100) }}%)
-  {% endif %}
-</span>
-{% endif %}
-</td>
-<td>
 
-{% if results[result].get('expanded_columns_after_classification', [])|length != 0 %}
-<strong>Matching clauses from the regex search for this document:</strong>
-{% for text in results[result]['expanded_columns_after_classification'] %}
-<div class="clause-box">{{ text }}</div>
-{% endfor %}
-{% elif results[result].get('matching_columns_after_classification', [])|length != 0 %}
-<strong>Matching clauses from the regex search for this document:</strong>
-{% for text in results[result]['matching_columns_after_classification'] %}
-<div class="clause-box">{{ text }}</div>
-{% endfor %}
+<div class="results-body">
+
+{% if ln_lst == 0 %}
+<div class="empty-state">
+  <h2>No results found</h2>
+  <p>Try a different clause name or adjust the search options.</p>
+  <a class="back-link" href="/">← Back to search</a>
+</div>
 {% endif %}
 
-{% if results[result].get('expanded_indents_after_classification', [])|length != 0 %}
-<strong>Indented clauses appearing in the context of your query for this document:</strong>
-{% for indent in results[result]['expanded_indents_after_classification'] %}
-<div class="clause-box">{{ indent }}</div>
-{% endfor %}
-{% elif results[result].get('matching_indents_after_classification', [])|length != 0 %}
-<strong>Indented clauses appearing in the context of your query for this document:</strong>
-{% for indent in results[result]['matching_indents_after_classification'] %}
-<div class="clause-box">{{ indent }}</div>
-{% endfor %}
-{% endif %}
+{% for result in range(ln_lst) %}
+{% set r = results[result] %}
+<div class="result-card">
 
-</td>
-</tr>
-{% endfor %}
-</table>
+  <div class="result-head">
+    <div>
+      <a class="doc-title" href="https://indiankanoon.org/doc/{{ r['DocID'] }}" target="_blank" rel="noopener">
+        {{ r['Title'] or ('Document ' + r['DocID']) }}
+      </a>
+      <div class="doc-meta">
+        {% if r.get('court_name') %}{{ r['court_name'] }}{% endif %}
+        {% if r.get('judgment_date') %} &middot; {{ r['judgment_date'] }}{% endif %}
+        {% if r.get('case_citation') %} &middot; {{ r['case_citation'] }}{% endif %}
+      </div>
+    </div>
 
+    <div class="badges">
+      <a class="badge badge-ik" href="https://indiankanoon.org/doc/{{ r['DocID'] }}" target="_blank" rel="noopener">
+        ↗ IndianKanoon
+      </a>
+
+      {% if r.get('classification_backend') %}
+      {% set cb = r['classification_backend'] %}
+      <span class="badge" style="background:#f0fff4;color:#276749;font-weight:600;">
+        {% if cb == 'local' %}🔵 Local HF
+        {% elif cb == 'azure' %}☁ Azure AI
+        {% elif cb == 'mixed' %}🔀 HF + Azure
+        {% else %}Regex{% endif %}
+      </span>
+      {% endif %}
+
+      {% if r.get('classification_confidence') %}
+      {% set conf = r['classification_confidence']|float %}
+      <span class="badge {% if conf >= 0.8 %}badge-high{% elif conf >= 0.5 %}badge-medium{% else %}badge-low{% endif %}">
+        {% if conf >= 0.8 %}High{% elif conf >= 0.5 %}Medium{% else %}Low{% endif %} confidence ({{ "%.0f"|format(conf * 100) }}%)
+      </span>
+      {% endif %}
+
+      {% if r.get('sentiment') %}
+      <span class="badge {% if 'negative' in r['sentiment'] %}badge-negative{% else %}badge-positive{% endif %}">
+        {{ r['sentiment'] }}{% if r.get('sentiment_confidence') %} · {{ "%.0f"|format(r['sentiment_confidence']|float * 100) }}%{% endif %}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="result-body">
+
+    {# Collect ALL classified clauses into one list #}
+    {% set all_clauses = [] %}
+    {% for text in r.get('expanded_columns_after_classification', []) %}
+      {% if all_clauses.append(text) %}{% endif %}
+    {% endfor %}
+    {% for text in r.get('expanded_indents_after_classification', []) %}
+      {% if all_clauses.append(text) %}{% endif %}
+    {% endfor %}
+    {# Fallback to raw matched text if no expanded clauses available #}
+    {% if all_clauses|length == 0 %}
+      {% for text in r.get('matching_columns_after_classification', []) %}
+        {% if all_clauses.append(text) %}{% endif %}
+      {% endfor %}
+      {% for text in r.get('matching_indents_after_classification', []) %}
+        {% if all_clauses.append(text) %}{% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if all_clauses|length > 0 %}
+    <div class="section-label">Classified Contract Clauses ({{ all_clauses|length }})</div>
+    {% for text in all_clauses %}
+    <div class="clause-block">{{ text }}</div>
+    {% endfor %}
+    {% else %}
+    <p class="no-clauses">No contract clauses identified for this document.</p>
+    {% endif %}
+
+    {% if r.get('extracted_discussion') %}
+    <hr class="divider">
+    <div class="section-label">Court's discussion of the clause</div>
+    <div class="discussion-block">{{ r['extracted_discussion'] }}</div>
+    {% endif %}
+
+    {% if r.get('classification_reasoning') %}
+    <div class="reasoning-block">Classification reasoning: {{ r['classification_reasoning'] }}</div>
+    {% endif %}
+
+  </div>
+</div>
+{% endfor %}
+
+<a class="back-link" href="/">← New search</a>
+
+</div>
 </body>
 </html>

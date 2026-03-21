@@ -1,5 +1,5 @@
 gunicorn
-azure-ai-inference
+openai
 python-dotenv
 flask
 bs4
@@ -9,3 +9,7 @@ transformers
 #torch
 psycopg
 pytz
+beautifulsoup4
+httpx
+torch
+transformers
