@@ -15,18 +15,19 @@ CLAUSE_BOUNDARY_PATTERN = re.compile(
     re.IGNORECASE
 )
 
-DB_HOST = os.environ.get("DB_HOST")
-DB_NAME = os.environ.get("DB_NAME")
-DB_USER = os.environ.get("DB_USER")
-DB_PASS = os.environ.get("DB_PASS")
-DB_SSLMODE = os.environ.get("SSLMODE", "require")
+DB_HOST = os.environ.get("DB_HOST") or os.environ.get("PGHOST")
+DB_NAME = os.environ.get("DB_NAME") or os.environ.get("PGDATABASE")
+DB_USER = os.environ.get("DB_USER") or os.environ.get("PGUSER")
+DB_PASS = os.environ.get("DB_PASS") or os.environ.get("PGPASSWORD")
+DB_PORT = os.environ.get("DB_PORT") or os.environ.get("PGPORT", "5432")
+DB_SSLMODE = os.environ.get("SSLMODE", "prefer")
 
 
 def create_connection():
     """Create a database connection using environment variables."""
     conn = None
     try:
-        db_uri = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} sslmode={DB_SSLMODE}"
+        db_uri = f"host={DB_HOST} port={DB_PORT} dbname={DB_NAME} user={DB_USER} password={DB_PASS} sslmode={DB_SSLMODE}"
         conn = psycopg.connect(db_uri)
     except Exception as e:
         print("Error during connection:\n", e)
