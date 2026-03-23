@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["glibcLocales", "libpq", "postgresql"]
+packages = ["glibcLocales", "libpq"]
 
 [userenv]
 
@@ -43,4 +43,9 @@ externalPort = 80
 
 [deployment]
 deploymentTarget = "autoscale"
+build = [
+"sh", "-c",
+"pip install -r requirements.txt && pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install transformers && python download_model.py",
+]
+
 run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "main:app"]
