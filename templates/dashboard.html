@@ -339,7 +339,7 @@
             <input type="radio" name="classifier" value="huggingface" {{ 'checked' if default_classifier != 'regex' else '' }}>
             <div>
               <div class="radio-label">HuggingFace + Azure AI fallback</div>
-              <div class="radio-desc">Runs a local NLI model (<code>cross-encoder/nli-MiniLM2-L6-H768</code>) first. Automatically falls back to Azure AI (Llama 3.3 70B) when local confidence is low or the model is unavailable.</div>
+              <div class="radio-desc">Runs a local NLI model (<code>schematise/ICAT-text-classifier</code>) first. Automatically falls back to Azure AI (Llama 3.3 70B) when local confidence is low or the model is unavailable.</div>
             </div>
           </label>
           <label class="radio-item">

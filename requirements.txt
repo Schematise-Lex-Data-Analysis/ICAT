@@ -1,15 +1,13 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 gunicorn
 openai
 python-dotenv
 flask
-bs4
+beautifulsoup4
 pandas
 requests
 transformers
-#torch
 psycopg
 pytz
-beautifulsoup4
 httpx
 torch
-transformers
