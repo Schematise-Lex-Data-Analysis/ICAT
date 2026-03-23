@@ -1,4 +1,4 @@
-# ICAT — Indian Contract Analysis Tool
+# ICAT — Indian Contracts in Adjudicated Texts
 
 A Flask-based legal tech application that searches, extracts, classifies, and
 analyzes contractual clauses from Indian court judgments via the IndianKanoon
